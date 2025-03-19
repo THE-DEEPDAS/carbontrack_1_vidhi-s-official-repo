@@ -5,10 +5,11 @@ import crypto from "crypto";
 import { v2 as cloudinary } from "cloudinary";
 import dotenv from "dotenv";
 import AnalysisHistory from "../models/analysisHistory.js";
+import axios from "axios"; // For REST API calls
 
 dotenv.config();
 
-// Custom configuration for cloudinary
+// Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -284,7 +285,76 @@ const calculateEmissions = (material, size) => {
   return Math.round(baseEmissions);
 };
 
-// Analysis controller function with Cloudinary integration
+// Function to query Vertex AI for Gemini 1.5 Flash
+const queryGeminiFlash = async (imageUrl) => {
+  try {
+    const prompt = `
+      Analyze the product in the image at the following URL: ${imageUrl}.
+      
+      Perform the following tasks:
+      1. Identify the product name and its brand.
+      2. List the harmful components used in the product's manufacturing process.
+      3. Explain the environmental impact of these components in a way that encourages the user to consider alternatives.
+      4. Suggest less harmful brands that produce similar products.
+      5. Recommend alternative products that serve the same purpose but are more eco-friendly.
+      
+      Return the results in the following JSON format:
+      {
+        "item_name": "Product Name",
+        "brand": "Brand Name",
+        "harmful_components": ["Component 1", "Component 2"],
+        "environmental_impact": "Detailed explanation of the impact",
+        "less_harmful_brands": ["Brand A", "Brand B"],
+        "alternative_products": ["Alternative Product 1", "Alternative Product 2"]
+      }
+    `;
+
+    const endpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${process.env.GCP_PROJECT_ID}/locations/${process.env.GCP_LOCATION}/publishers/google/models/gemini-1p5-turbo:predict`;
+
+    const response = await axios.post(
+      endpoint,
+      {
+        instances: [{ content: prompt }],
+        parameters: {
+          temperature: 0.7,
+          maxOutputTokens: 1024,
+          topP: 0.8,
+          topK: 40,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.GCP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (
+      !response.data ||
+      !response.data.predictions ||
+      !response.data.predictions[0].content
+    ) {
+      throw new Error("Invalid response from Vertex AI.");
+    }
+
+    return JSON.parse(response.data.predictions[0].content); // Parse the JSON response
+  } catch (error) {
+    if (error.response && error.response.status === 401) {
+      console.error("Authentication error: Invalid access token.");
+    } else if (error.response && error.response.status === 404) {
+      console.error("Error: The API endpoint is incorrect or does not exist.");
+    } else {
+      console.error(
+        "Error querying Vertex AI:",
+        error.response?.data || error.message
+      );
+    }
+    throw new Error("Failed to process the item using Vertex AI.");
+  }
+};
+
+// Updated analyzeProduct function
 export const analyzeProduct = async (req, res) => {
   try {
     if (!req.file) {
@@ -293,10 +363,9 @@ export const analyzeProduct = async (req, res) => {
         .json({ message: "Product image required for analysis" });
     }
 
-    // Upload to Cloudinary with unique folder structure
+    // Step 1: Upload the image to Cloudinary
     const b64 = Buffer.from(req.file.buffer).toString("base64");
     const dataURI = `data:${req.file.mimetype};base64,${b64}`;
-
     const cloudinaryResult = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload(
         dataURI,
@@ -311,66 +380,27 @@ export const analyzeProduct = async (req, res) => {
       );
     });
 
-    // Extract product information using custom algorithms
-    const materialType = await determineMaterialFromImage(
-      cloudinaryResult.public_id
-    );
-    const { size } = await estimateProductDimensions(
-      cloudinaryResult.public_id
-    );
+    const imageUrl = cloudinaryResult.secure_url;
 
-    // Apply our proprietary environmental impact calculations
-    const impactScore = calculateEcoImpactScore(materialType, size);
-    const emissionsAmount = calculateEmissions(materialType, size);
+    // Step 2: Query Gemini 1.5 Flash for analysis
+    const geminiResponse = await queryGeminiFlash(imageUrl);
 
-    // Generate customized eco recommendations
-    const ecoRecommendations = generateEcoRecommendations(materialType, size);
-
-    // Create descriptive product assessment
-    const productDescription = `This appears to be a ${size} product primarily composed of ${materialType}-based materials.`;
-
-    // Calculate additional sustainability metrics
-    const recycleRating = customMaterialDatabase[materialType].recycleRating;
-    const improvementPotential = Math.round((10 - recycleRating) * 9);
-
-    // Comprehensive analysis result
-    const analysisResult = {
-      impact_score: impactScore,
-      carbon_footprint: emissionsAmount,
-      material_composition: materialType,
-      product_size: size,
-      recyclability: recycleRating,
-      improvement_potential: improvementPotential,
-      recommendations: ecoRecommendations,
-      eco_tips: [
-        `${
-          materialType.charAt(0).toUpperCase() + materialType.slice(1)
-        }-based products require ${
-          recycleRating > 7
-            ? "standard recycling procedures"
-            : "specialized disposal methods"
-        }`,
-        `This product contributes approximately ${emissionsAmount}kg of CO2 equivalent to your annual carbon footprint`,
-        `Choosing products with ${materialType} alternatives can reduce your environmental impact by up to ${improvementPotential}%`,
-      ],
-    };
-
-    // Save analysis to user history
+    // Step 3: Save the analysis to the user's history
     const historyEntry = new AnalysisHistory({
       user: req.user.id,
-      product_description: productDescription,
-      image_url: cloudinaryResult.secure_url,
-      analysis_result: analysisResult,
+      product_description: geminiResponse.item_name || "Unknown Product",
+      image_url: imageUrl,
+      analysis_result: geminiResponse, // Save the full response from Gemini
       created_at: new Date(),
     });
 
     await historyEntry.save();
 
+    // Step 4: Return the analysis result
     return res.status(200).json({
       success: true,
-      image_url: cloudinaryResult.secure_url,
-      product_description: productDescription,
-      analysis: analysisResult,
+      image_url: imageUrl,
+      analysis: geminiResponse,
       history_id: historyEntry._id,
     });
   } catch (error) {

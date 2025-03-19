@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+
 import {
   BrowserRouter as Router,
   Routes,
@@ -8,7 +9,7 @@ import {
 import { useAuthStore } from "./store/authStore";
 import { Navbar } from "./components/Navbar";
 import { AIAssistant } from "./components/AIAssistant";
-import { Dashboard } from "./pages/Dashboard";
+import Dashboard from "./pages/Dashboard";
 import { Monitoring } from "./pages/Monitoring";
 import { Certificates } from "./pages/Certificates";
 import { Analysis } from "./pages/Analysis";

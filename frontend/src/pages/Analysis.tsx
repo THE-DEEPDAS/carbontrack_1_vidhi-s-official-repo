@@ -21,11 +21,11 @@ interface HistoryItem {
 }
 
 export const Analysis = () => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [analysis, setAnalysis] = useState(null as AnalysisResult | null);
+  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
