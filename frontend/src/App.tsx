@@ -7,7 +7,11 @@ import Dashboard from "./pages/Dashboard";
 import Monitoring from "./pages/Monitoring";
 import { Analysis } from "./pages/Analysis";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
+import { AdminOrganizations } from "./pages/admin/AdminOrganizations";
+import { AdminUsers } from "./pages/admin/AdminUsers";
 import { OrgDashboard } from "./pages/organization/OrgDashboard";
+import { OrgEmployees } from "./pages/organization/OrgEmployees";
+import { OrgReports } from "./pages/organization/OrgReports";
 import AdminLayout from "./layouts/AdminLayout";
 import OrgLayout from "./layouts/OrgLayout";
 import UserLayout from "./layouts/UserLayout";
@@ -65,14 +69,16 @@ function App() {
         {/* Admin protected routes */}
         <Route path="/admin/*" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
-          {/* ...other nested admin routes can go here */}
+          <Route path="organizations" element={<AdminOrganizations />} />
+          <Route path="users" element={<AdminUsers />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Route>
 
         {/* Organization protected routes */}
         <Route path="/org/*" element={<OrgLayout />}>
           <Route index element={<OrgDashboard />} />
-          {/* ...other nested organization routes can go here */}
+          <Route path="employees" element={<OrgEmployees />} />
+          <Route path="reports" element={<OrgReports />} />
           <Route path="*" element={<Navigate to="/org" replace />} />
         </Route>
 
