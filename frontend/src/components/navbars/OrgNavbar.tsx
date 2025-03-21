@@ -10,14 +10,15 @@ export const OrgNavbar = () => {
   // Only render for organization users
   if (user?.role !== "organization") return null;
 
-  const isActive = (path: string) => location.pathname.startsWith(path);
+  // Use equality check for active route
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <nav className="bg-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <div className="flex space-x-4">
-            <Link to="/org" className="flex items-center">
+            <Link to="/org/dashboard" className="flex items-center">
               <span className="text-xl font-bold text-blue-600">
                 Organization Panel
               </span>
@@ -25,9 +26,9 @@ export const OrgNavbar = () => {
           </div>
           <div className="flex space-x-4">
             <Link
-              to="/org"
+              to="/org/dashboard"
               className={`px-3 py-2 rounded-md text-sm font-medium ${
-                isActive("/org") && location.pathname === "/org"
+                isActive("/org/dashboard")
                   ? "bg-blue-500 text-white"
                   : "text-gray-600 hover:bg-blue-100"
               }`}

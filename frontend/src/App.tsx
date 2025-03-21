@@ -77,11 +77,10 @@ function App() {
         </Route>
 
         {/* User protected routes */}
-        <Route path="/dashboard/*" element={<UserLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="monitoring" element={<Monitoring />} />
-          <Route path="analysis" element={<Analysis />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route element={<UserLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/monitoring" element={<Monitoring />} />
+          <Route path="/analysis" element={<Analysis />} />
         </Route>
 
         {/* Default route - if logged in, redirect to appropriate dashboard */}
