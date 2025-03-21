@@ -5,6 +5,7 @@ import { Login } from "./pages/Login";
 import { SignUp } from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
 import Monitoring from "./pages/Monitoring";
+import {Certificates } from "./pages/Certificates"
 import { Analysis } from "./pages/Analysis";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { AdminOrganizations } from "./pages/admin/AdminOrganizations";
@@ -87,6 +88,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/monitoring" element={<Monitoring />} />
           <Route path="/analysis" element={<Analysis />} />
+          <Route path="/certificates" element={<Certificates/>} />
         </Route>
 
         {/* Default route - if logged in, redirect to appropriate dashboard */}
