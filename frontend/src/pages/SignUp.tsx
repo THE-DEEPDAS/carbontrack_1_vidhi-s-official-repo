@@ -1,20 +1,28 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
-import { UserPlus } from 'lucide-react';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../store/authStore";
+import { UserPlus } from "lucide-react";
 
 export const SignUp = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("user");
+  const [organizationName, setOrganizationName] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
-  const signUp = useAuthStore(state => state.signUp);
+  const signUp = useAuthStore((state) => state.signUp);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await signUp(email, password);
-      navigate('/dashboard');
+      await signUp(email, password, role, organizationName);
+      navigate(
+        role === "admin"
+          ? "/admin/dashboard"
+          : role === "organization"
+          ? "/org/dashboard"
+          : "/dashboard"
+      );
     } catch (err: any) {
       setError(err.message);
     }
@@ -36,7 +44,10 @@ export const SignUp = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
+            <label
+              className="block text-gray-700 text-sm font-bold mb-2"
+              htmlFor="email"
+            >
               Email
             </label>
             <input
@@ -50,7 +61,10 @@ export const SignUp = () => {
           </div>
 
           <div className="mb-6">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+            <label
+              className="block text-gray-700 text-sm font-bold mb-2"
+              htmlFor="password"
+            >
               Password
             </label>
             <input
@@ -62,6 +76,61 @@ export const SignUp = () => {
               required
             />
           </div>
+
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Account Type
+            </label>
+            <div className="mt-2 space-y-2">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  value="user"
+                  checked={role === "user"}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="form-radio"
+                />
+                <span className="ml-2">User</span>
+              </label>
+              <br />
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  value="organization"
+                  checked={role === "organization"}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="form-radio"
+                />
+                <span className="ml-2">Organization</span>
+              </label>
+              <br />
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  value="admin"
+                  checked={role === "admin"}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="form-radio"
+                />
+                <span className="ml-2">Admin</span>
+              </label>
+            </div>
+          </div>
+
+          {role === "organization" && (
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                Organization Name
+              </label>
+              <input
+                type="text"
+                value={organizationName}
+                onChange={(e) => setOrganizationName(e.target.value)}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                required
+              />
+            </div>
+          )}
 
           <button
             type="submit"
