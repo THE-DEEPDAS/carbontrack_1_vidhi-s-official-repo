@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { useAuthStore } from "./store/authStore";
 import { Login } from "./pages/Login";
 import { SignUp } from "./pages/SignUp";
@@ -49,6 +49,14 @@ function App() {
 
   return (
     <BrowserRouter>
+      {/* Public nav for non-logged-in users */}
+      {!user && (
+        <nav className="bg-white shadow p-4 flex justify-end space-x-4">
+          <Link to="/login">Login</Link>
+          <Link to="/signup">Sign Up</Link>
+        </nav>
+      )}
+
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
