@@ -10,7 +10,7 @@ import { useAuthStore } from "./store/authStore";
 import { Navbar } from "./components/Navbar";
 import { AIAssistant } from "./components/AIAssistant";
 import Dashboard from "./pages/Dashboard";
-import { Monitoring } from "./pages/Monitoring";
+import  Monitoring  from "./pages/Monitoring.jsx";
 import { Certificates } from "./pages/Certificates";
 import { Analysis } from "./pages/Analysis";
 import { Login } from "./pages/Login";
