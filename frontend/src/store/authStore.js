@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import axios from "axios";
 
 const API_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"; // Use environment variable
@@ -25,7 +26,12 @@ export const useAuthStore = create(
           const data = await response.json();
           if (!response.ok) throw new Error(data.message);
 
-          set({ user: data.user, token: data.token, error: null, loading: false });
+          set({
+            user: data.user,
+            token: data.token,
+            error: null,
+            loading: false,
+          });
           return data;
         } catch (error) {
           set({ error: error.message, loading: false });
@@ -53,7 +59,12 @@ export const useAuthStore = create(
 
           // Save token and user data to localStorage and state
           localStorage.setItem("token", data.token);
-          set({ user: data.user, token: data.token, error: null, loading: false });
+          set({
+            user: data.user,
+            token: data.token,
+            error: null,
+            loading: false,
+          });
 
           return data;
         } catch (error) {
@@ -68,6 +79,21 @@ export const useAuthStore = create(
       },
 
       setUser: (user) => set({ user }),
+
+      fetchUserData: async (url) => {
+        try {
+          const response = await axios.get(url, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          set({ user: response.data });
+          return response.data;
+        } catch (error) {
+          console.error("Error fetching user data:", error.message);
+          throw error;
+        }
+      },
     }),
     {
       name: "auth-storage",

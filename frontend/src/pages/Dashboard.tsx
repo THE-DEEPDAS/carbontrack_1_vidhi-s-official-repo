@@ -56,6 +56,7 @@ const Dashboard = () => {
     // Fetch user data from the backend
     axios
       .get(`${API_URL}/user-data`, {
+        // Corrected endpoint
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -72,6 +73,7 @@ const Dashboard = () => {
     // Fetch comparison data dynamically
     axios
       .get(`${API_URL}/users`, {
+        // Corrected endpoint
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },

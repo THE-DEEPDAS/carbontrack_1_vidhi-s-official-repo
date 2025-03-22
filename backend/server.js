@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import analysisRoutes from "./routes/analysisRoutes.js";
 import certificateRoutes from "./routes/certificateRoutes.js";
-import userRoutes from "./routes/userRoutes.js"; // Import userRoutes
+import userRoutes from "./routes/userRoutes.js";
 
 dotenv.config({});
 
@@ -19,7 +19,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/analysis", analysisRoutes);
 app.use("/api/certificates", certificateRoutes);
-app.use("/api/users", userRoutes); // Correct mapping
+app.use("/api", userRoutes); // Ensure this mounts userRoutes at /api
 
 // Connect to MongoDB
 mongoose

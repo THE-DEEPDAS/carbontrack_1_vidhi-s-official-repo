@@ -7,7 +7,6 @@ import Dashboard from "./pages/Dashboard";
 import Monitoring from "./pages/Monitoring";
 import { Certificates } from "./pages/Certificates";
 import { Analysis } from "./pages/Analysis";
-import { Certificates } from "./pages/Certificates";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { AdminOrganizations } from "./pages/admin/AdminOrganizations";
 import { AdminUsers } from "./pages/admin/AdminUsers";
@@ -27,16 +26,20 @@ const API_URL =
 function App() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
-  const fetchUserData = useAuthStore((state) => state.fetchUserData);
+  const fetchUserData = useAuthStore((state) => state.fetchUserData); // Ensure fetchUserData is imported correctly
   const [isFormComplete, setIsFormComplete] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      fetchUserData(`${API_URL}/auth/profile`).catch(() => {
-        localStorage.removeItem("token");
-        setUser(null);
-      });
+      fetchUserData(`${API_URL}/auth/profile`) // Ensure fetchUserData is called with the correct API endpoint
+        .then((userData) => {
+          setUser(userData); // Update the user state with the fetched data
+        })
+        .catch(() => {
+          localStorage.removeItem("token");
+          setUser(null);
+        });
     }
   }, [fetchUserData, setUser]);
 
@@ -73,13 +76,13 @@ function App() {
             <Route path="*" element={<Navigate to="/org" replace />} />
           </Route>
 
-        {/* User protected routes */}
-        <Route element={<UserLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/monitoring" element={<Monitoring />} />
-          <Route path="/analysis" element={<Analysis />} />
-          <Route path="/certificates" element={<Certificates />} />
-        </Route>
+          {/* User protected routes */}
+          <Route element={<UserLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/monitoring" element={<Monitoring />} />
+            <Route path="/analysis" element={<Analysis />} />
+            <Route path="/certificates" element={<Certificates />} />
+          </Route>
 
           {/* Default route */}
           <Route

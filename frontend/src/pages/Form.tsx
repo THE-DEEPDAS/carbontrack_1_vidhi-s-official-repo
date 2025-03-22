@@ -39,6 +39,7 @@ const Form = ({ onComplete }) => {
     // Fetch existing user data to prefill the form
     axios
       .get("/api/user-data", {
+        // Corrected endpoint
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
