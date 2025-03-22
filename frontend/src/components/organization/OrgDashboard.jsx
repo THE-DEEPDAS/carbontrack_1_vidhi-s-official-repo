@@ -28,13 +28,20 @@ function OrgDashboard() {
   const signOut = useAuthStore((state) => state.signOut);
 
   useEffect(() => {
+    console.log("OrgDashboard mounted");
     axios
       .get("/api/departments")
-      .then((res) => setDepartments(res.data))
+      .then((res) => {
+        console.log("Departments fetched:", res.data);
+        setDepartments(res.data);
+      })
       .catch((err) => console.error("Error fetching departments:", err));
     axios
       .get("/api/departments/averages")
-      .then((res) => setAverages(res.data))
+      .then((res) => {
+        console.log("Averages fetched:", res.data);
+        setAverages(res.data);
+      })
       .catch((err) => console.error("Error fetching averages:", err));
   }, []);
 
@@ -94,8 +101,10 @@ function OrgDashboard() {
         </button>
       </nav>
       <div className="p-4">
-        <h2 className="text-2xl font-bold mb-4">Organization Dashboard</h2>
-        <div className="mb-8">
+        <h1 className="text-3xl font-bold">Organization Dashboard</h1>
+        <p>This is the dashboard for departments.</p>
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold">Energy Usage vs Average</h2>
           <Bar
             data={energyData}
             options={{
@@ -105,7 +114,8 @@ function OrgDashboard() {
             }}
           />
         </div>
-        <div>
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold">Carbon Footprint vs Average</h2>
           <Bar
             data={carbonData}
             options={{
