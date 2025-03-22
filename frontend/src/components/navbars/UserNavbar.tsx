@@ -54,6 +54,16 @@ export const UserNavbar = () => {
             >
               Analysis
             </Link>
+            <Link
+              to="/certificates"
+              className={`px-3 py-2 rounded-md text-sm font-medium ${
+                isActive("/certificates")
+                  ? "bg-green-500 text-white"
+                  : "text-gray-600 hover:bg-green-100"
+              }`}
+            >
+              Certificates
+            </Link>
             <button
               onClick={signOut}
               className="px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-100"

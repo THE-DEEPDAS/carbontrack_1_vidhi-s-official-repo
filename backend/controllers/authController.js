@@ -1,9 +1,10 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: "5d", // Changed to 5 days
+// Updated generateToken to include role in the token payload
+const generateToken = (userId, role) => {
+  return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
+    expiresIn: "5d", // Token expires in 5 days
   });
 };
 
@@ -23,7 +24,10 @@ export const register = async (req, res) => {
 
     // Validate admin registration (you might want to add more security here)
     if (role === "admin") {
-      // Add any additional admin validation logic
+      // Add any additional admin validation logic, e.g., require a secret key
+      // Example: if (req.body.adminSecret !== process.env.ADMIN_SECRET) {
+      //   return res.status(403).json({ message: "Not authorized to register as admin" });
+      // }
     }
 
     const user = await User.create({
@@ -33,14 +37,16 @@ export const register = async (req, res) => {
       organizationName,
     });
 
-    const token = generateToken(user._id);
+    // Generate token with role included
+    const token = generateToken(user._id, user.role);
 
     res.status(201).json({
+      success: true, // Added success field for consistency
       user: {
         id: user._id,
         email: user.email,
         role: user.role,
-        organizationName: user.organizationName,
+        organizationName: user.organizationName || null, // Ensure null if undefined
       },
       token,
     });
@@ -63,13 +69,15 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = generateToken(user._id);
+    // Generate token with role included
+    const token = generateToken(user._id, user.role);
 
-    res.json({
+    res.status(200).json({
+      success: true, // Added success field for consistency
       user: {
         id: user._id,
         email: user.email,
-        role: user.role, // Include role in the response
+        role: user.role,
         organizationName: user.organizationName || null,
       },
       token,
@@ -82,7 +90,18 @@ export const login = async (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
-    res.json(user);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        organizationName: user.organizationName || null,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
