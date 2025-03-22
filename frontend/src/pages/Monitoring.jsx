@@ -67,7 +67,9 @@ export default function Monitoring() {
       for (let i = length - 1; i >= 0; i--) {
         const time = new Date(now.getTime() - i * 24 * 60 * 60 * 1000); // 1-day intervals
         labels.push(
-          `${time.toLocaleString("default", { month: "short" })} ${time.getDate()}`
+          `${time.toLocaleString("default", {
+            month: "short",
+          })} ${time.getDate()}`
         );
       }
     }
@@ -127,62 +129,142 @@ export default function Monitoring() {
     }
   };
 
-  // Parse JSON response from LLM and determine the appropriate icon
+  // Updated parseLLMResponse function to strip markdown wrappers completely
   const parseLLMResponse = (text) => {
+    // Remove all triple backticks and the word "json" if present
+    const cleanedText = text.replace(/```(?:json)?/gi, "").trim();
     let parsedData;
     try {
-      parsedData = JSON.parse(text);
+      parsedData = JSON.parse(cleanedText);
     } catch (error) {
       console.error("Failed to parse JSON response:", error);
-      // Fallback: Treat the text as a recommendation if JSON parsing fails
       return {
-        recommendation: text.trim(),
+        recommendation: cleanedText,
         icon: "ℹ️",
         iconColor: "text-blue-500",
       };
     }
 
-    // Extract the recommendation from the JSON
-    const recommendation = parsedData.recommendation || parsedData.message || text.trim();
-
-    // Determine the icon based on the recommendation content
-    let icon = "ℹ️"; // Default icon
-    let iconColor = "text-blue-500"; // Default color
-
-    if (recommendation.toLowerCase().includes("energy")) {
-      icon = "⚡"; // Zap icon for energy
-      iconColor = "text-yellow-500";
-    } else if (recommendation.toLowerCase().includes("co2")) {
-      icon = "💨"; // Gas icon for CO2
-      iconColor = "text-gray-500";
-    } else if (recommendation.toLowerCase().includes("fluctuating")) {
-      icon = "↕️"; // Arrow up/down for fluctuating levels
-      iconColor = "text-orange-500";
+    if (
+      parsedData.sensor_data &&
+      parsedData.analysis &&
+      parsedData.overall_summary
+    ) {
+      return {
+        recommendation: {
+          analysis: parsedData.analysis,
+          summary: parsedData.overall_summary,
+        },
+        icon: "📊",
+        iconColor: "text-blue-500",
+      };
     }
 
+    if (
+      parsedData.analysis &&
+      parsedData.recommendations &&
+      Array.isArray(parsedData.recommendations)
+    ) {
+      const formattedRecs = parsedData.recommendations
+        .map(
+          (rec, idx) =>
+            `Insight ${idx + 1}: ${rec.insight}\nRecommendation: ${
+              rec.recommendation
+            }`
+        )
+        .join("\n\n");
+      return {
+        recommendation: formattedRecs,
+        icon: "💡",
+        iconColor: "text-purple-500",
+      };
+    }
+
+    if (parsedData.insight && parsedData.recommendation) {
+      return {
+        recommendation: {
+          insight: parsedData.insight,
+          recommendation: parsedData.recommendation,
+        },
+        icon: "💡",
+        iconColor: "text-purple-500",
+      };
+    }
+
+    const recommendation =
+      parsedData.recommendation || parsedData.message || cleanedText;
+    let icon = "ℹ️";
+    let iconColor = "text-blue-500";
+    if (recommendation.toLowerCase().includes("energy")) {
+      icon = "⚡";
+      iconColor = "text-yellow-500";
+    } else if (recommendation.toLowerCase().includes("co2")) {
+      icon = "💨";
+      iconColor = "text-gray-500";
+    } else if (recommendation.toLowerCase().includes("fluctuating")) {
+      icon = "↕️";
+      iconColor = "text-orange-500";
+    }
     return { recommendation, icon, iconColor };
   };
 
-  // Fetch recommendations from LLM every 1 minute
+  // Fetch recommendations from LLM every 5 minutes
   useEffect(() => {
     const fetchRecommendations = async () => {
-      if (chartData.co2.length === 0) return;
+      // Removed the check for empty CO2 data
 
       console.log("Fetching recommendations...");
       setLoading(true);
       setStatus("Preparing data for AI analysis...");
-
       try {
-        const inputData = `Analyze the following CO2 sensor data and provide recommendations in JSON format:
-          - CO2 Levels (last 10 values): ${chartData.co2.slice(-10).join(", ")}
-          Provide insights and actionable recommendations in the following JSON format:
-          {
-            "insight": "Description of the issue",
-            "recommendation": "Actionable recommendation"
-          }`;
+        const inputData = `Analyze the following sensor data and provide recommendations in this exact JSON format with timestamps:
+\`\`\`json
+{
+  "sensor_data": {
+    "CO2_Levels": [
+      ${chartData.co2
+        .slice(-5)
+        .map((value, i) => {
+          const time = new Date();
+          time.setHours(time.getHours() - (4 - i));
+          return `{
+          "timestamp": "${time.toISOString()}",
+          "level": ${value}
+        }`;
+        })
+        .join(",\n      ")}
+    ],
+    "Energy_Levels": [
+      ${chartData.energy
+        .slice(-5)
+        .map((value, i) => {
+          const time = new Date();
+          time.setHours(time.getHours() - (4 - i));
+          return `{
+          "timestamp": "${time.toISOString()}",
+          "level": ${value}
+        }`;
+        })
+        .join(",\n      ")}
+    ]
+  },
+  "analysis": [
+    {
+      "insight": "Detailed analysis of CO2 levels with timestamps",
+      "recommendation": "Specific actions for CO2"
+    },
+    {
+      "insight": "Detailed analysis of energy consumption with timestamps",
+      "recommendation": "Specific actions for energy"
+    }
+  ],
+  "overall_summary": {
+    "insight": "Overall system status summary",
+    "recommendation": "Key actions to take"
+  }
+}\`\`\``;
 
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
         const result = await model.generateContent([inputData]);
         const response = await result.response;
         const text = response.text();
@@ -203,8 +285,12 @@ export default function Monitoring() {
           });
           setStatus("AI analysis completed.");
         } else {
-          console.warn("LLM did not return a valid response or data is insufficient.");
-          setStatus("AI analysis failed: Insufficient data or invalid response.");
+          console.warn(
+            "LLM did not return a valid response or data is insufficient."
+          );
+          setStatus(
+            "AI analysis failed: Insufficient data or invalid response."
+          );
         }
       } catch (error) {
         console.error("Error fetching AI recommendations:", error);
@@ -215,14 +301,11 @@ export default function Monitoring() {
       }
     };
 
-    // Initial fetch
+    // Initial fetch at t = 0 and then every 5 minutes
     fetchRecommendations();
-
-    // Fetch every 1 minute
-    const interval = setInterval(fetchRecommendations, 60 * 1000);
-
+    const interval = setInterval(fetchRecommendations, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [chartData.co2]);
+  }, []);
 
   // Chart data and options for each metric
   const createChartData = (data, color, label) => {
@@ -251,7 +334,8 @@ export default function Monitoring() {
         titleColor: "#fff",
         bodyColor: "#fff",
         callbacks: {
-          label: (context) => `${context.dataset.label}: ${context.parsed.y} at ${context.label}`,
+          label: (context) =>
+            `${context.dataset.label}: ${context.parsed.y} at ${context.label}`,
         },
       },
       legend: { display: false },
@@ -358,13 +442,19 @@ export default function Monitoring() {
           </div>
           <p className="text-2xl font-bold mb-2">
             {chartData.temperature.length > 0
-              ? chartData.temperature[chartData.temperature.length - 1].toFixed(1)
+              ? chartData.temperature[chartData.temperature.length - 1].toFixed(
+                  1
+                )
               : "0.0"}
             °C
           </p>
           <div className="h-40">
             <Line
-              data={createChartData(chartData.temperature, "#FF6F61", "Temperature (°C)")}
+              data={createChartData(
+                chartData.temperature,
+                "#FF6F61",
+                "Temperature (°C)"
+              )}
               options={{
                 ...chartOptions,
                 scales: {
@@ -382,7 +472,9 @@ export default function Monitoring() {
               Hourly Change:{" "}
               <span
                 className={`font-bold ${
-                  tempStats.hourlyChange >= 0 ? "text-green-500" : "text-red-500"
+                  tempStats.hourlyChange >= 0
+                    ? "text-green-500"
+                    : "text-red-500"
                 }`}
               >
                 {tempStats.hourlyChange >= 0 ? "+" : ""}
@@ -391,7 +483,9 @@ export default function Monitoring() {
             </p>
             <p>
               24h Avg:{" "}
-              <span className="font-bold">{tempStats.average.toFixed(1)}°C</span>
+              <span className="font-bold">
+                {tempStats.average.toFixed(1)}°C
+              </span>
             </p>
           </div>
         </div>
@@ -422,7 +516,11 @@ export default function Monitoring() {
           </p>
           <div className="h-40">
             <Line
-              data={createChartData(chartData.energy, "#FFC107", "Energy (kWh)")}
+              data={createChartData(
+                chartData.energy,
+                "#FFC107",
+                "Energy (kWh)"
+              )}
               options={{
                 ...chartOptions,
                 scales: {
@@ -440,7 +538,9 @@ export default function Monitoring() {
               Hourly Change:{" "}
               <span
                 className={`font-bold ${
-                  energyStats.hourlyChange >= 0 ? "text-green-500" : "text-red-500"
+                  energyStats.hourlyChange >= 0
+                    ? "text-green-500"
+                    : "text-red-500"
                 }`}
               >
                 {energyStats.hourlyChange >= 0 ? "+" : ""}
@@ -449,7 +549,9 @@ export default function Monitoring() {
             </p>
             <p>
               24h Avg:{" "}
-              <span className="font-bold">{energyStats.average.toFixed(1)} kWh</span>
+              <span className="font-bold">
+                {energyStats.average.toFixed(1)} kWh
+              </span>
             </p>
           </div>
         </div>
@@ -498,7 +600,9 @@ export default function Monitoring() {
               Hourly Change:{" "}
               <span
                 className={`font-bold ${
-                  waterStats.hourlyChange >= 0 ? "text-green-500" : "text-red-500"
+                  waterStats.hourlyChange >= 0
+                    ? "text-green-500"
+                    : "text-red-500"
                 }`}
               >
                 {waterStats.hourlyChange >= 0 ? "+" : ""}
@@ -507,7 +611,9 @@ export default function Monitoring() {
             </p>
             <p>
               24h Avg:{" "}
-              <span className="font-bold">{waterStats.average.toFixed(1)} L</span>
+              <span className="font-bold">
+                {waterStats.average.toFixed(1)} L
+              </span>
             </p>
           </div>
         </div>
@@ -565,7 +671,9 @@ export default function Monitoring() {
             </p>
             <p>
               24h Avg:{" "}
-              <span className="font-bold">{co2Stats.average.toFixed(1)} ppm</span>
+              <span className="font-bold">
+                {co2Stats.average.toFixed(1)} ppm
+              </span>
             </p>
           </div>
         </div>
@@ -591,17 +699,59 @@ export default function Monitoring() {
             recommendations.map((rec, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                className="p-4 rounded-lg bg-white shadow-sm hover:bg-gray-50 transition-colors duration-200"
               >
-                <div className="flex items-center space-x-3">
-                  <span className={`text-lg ${rec.iconColor}`}>
+                <div className="flex items-start space-x-3">
+                  <span className={`text-2xl ${rec.iconColor} mt-1`}>
                     {rec.icon}
                   </span>
-                  <p className="text-gray-800 text-base">{rec.recommendation}</p>
+                  <div className="flex-1">
+                    {rec.recommendation &&
+                    typeof rec.recommendation === "object" &&
+                    rec.recommendation.analysis ? (
+                      <div className="space-y-4">
+                        {rec.recommendation.analysis.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="pb-4 border-b border-gray-100 last:border-0"
+                          >
+                            <div className="text-indigo-600 font-semibold mb-1">
+                              Analysis {idx + 1}
+                            </div>
+                            <div className="mb-2">
+                              <span className="text-gray-700 font-medium">
+                                Recommendation:
+                              </span>
+                              <p className="text-gray-600 mt-1">
+                                {item.recommendation}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        {rec.recommendation.summary && (
+                          <div className="mt-4 bg-blue-50 p-4 rounded-lg">
+                            <div className="text-blue-800 font-semibold mb-2">
+                              Overall Summary
+                            </div>
+                            <div>
+                              <span className="text-blue-700 font-medium">
+                                Key Actions:
+                              </span>
+                              <p className="text-blue-600 mt-1">
+                                {rec.recommendation.summary.recommendation}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-gray-800">{rec.recommendation}</p>
+                    )}
+                    <div className="mt-2 text-sm text-gray-500 text-right">
+                      {formatTimestamp(rec.timestamp)}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500">
-                  {formatTimestamp(rec.timestamp)}
-                </p>
               </div>
             ))
           )}
