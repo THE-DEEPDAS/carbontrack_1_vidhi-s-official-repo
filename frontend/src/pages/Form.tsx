@@ -39,13 +39,41 @@ const Form = ({ onComplete }) => {
     // Fetch existing user data to prefill the form
     axios
       .get("/api/user-data", {
-        // Corrected endpoint
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       })
       .then((response) => {
-        setFormData(response.data);
+        const userData = response.data;
+
+        // Ensure all nested properties exist
+        const defaultData = {
+          transport: {
+            primaryMode: "",
+            otherModes: [],
+            weeklyDistance: 0,
+            carFuelType: "",
+            carFuelEfficiency: 0,
+            flightTravel: "",
+          },
+          energy: {
+            electricity: 0,
+            primarySource: "",
+            ledLights: false,
+          },
+          water: {
+            usage: 0,
+          },
+          fuel: {
+            gasUsage: 0,
+            cookingFuelType: "",
+          },
+          lifestyle: {
+            compostRecycle: false,
+          },
+        };
+
+        setFormData({ ...defaultData, ...userData });
       })
       .catch((err) => {
         console.error("Error fetching user data for form:", err.message);
@@ -78,13 +106,32 @@ const Form = ({ onComplete }) => {
     }));
   };
 
+  const handleNextStep = () => {
+    setStep((prevStep) => prevStep + 1);
+  };
+
+  const handlePreviousStep = () => {
+    setStep((prevStep) => prevStep - 1);
+  };
+
   const handleSubmit = async () => {
-    await axios.post("/api/user-data", formData, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-    onComplete();
+    try {
+      const response = await axios.post("/api/user-data", formData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      console.log("Form submitted successfully:", response.data);
+      onComplete();
+    } catch (err) {
+      console.error(
+        "Error submitting form data:",
+        err.response?.data || err.message
+      ); // Log detailed error response
+      alert(
+        `Error: ${err.response?.data?.error || "Failed to submit form data"}`
+      );
+    }
   };
 
   return (
@@ -94,6 +141,7 @@ const Form = ({ onComplete }) => {
           <h2 className="text-xl font-semibold mb-4">
             Step 1: Personal Details
           </h2>
+          {/* Personal Details Form */}
           <div className="mb-4">
             <label className="block text-gray-700">Full Name</label>
             <input
@@ -145,28 +193,8 @@ const Form = ({ onComplete }) => {
               <option value="51+">51+</option>
             </select>
           </div>
-          <div className="mb-4">
-            <label className="block text-gray-700">City</label>
-            <input
-              type="text"
-              name="city"
-              value={formData.city}
-              onChange={handleChange}
-              className="w-full border rounded p-2"
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-gray-700">Country</label>
-            <input
-              type="text"
-              name="country"
-              value={formData.country}
-              onChange={handleChange}
-              className="w-full border rounded p-2"
-            />
-          </div>
           <button
-            onClick={() => setStep(2)}
+            onClick={handleNextStep}
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
           >
             Next
@@ -178,6 +206,7 @@ const Form = ({ onComplete }) => {
           <h2 className="text-xl font-semibold mb-4">
             Step 2: Transportation Habits
           </h2>
+          {/* Transportation Form */}
           <div className="mb-4">
             <label className="block text-gray-700">
               Primary Mode of Transport
@@ -206,17 +235,26 @@ const Form = ({ onComplete }) => {
               className="w-full border rounded p-2"
             />
           </div>
-          <button
-            onClick={() => setStep(3)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Next
-          </button>
+          <div className="flex justify-between">
+            <button
+              onClick={handlePreviousStep}
+              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Previous
+            </button>
+            <button
+              onClick={handleNextStep}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
       {step === 3 && (
         <div>
           <h2 className="text-xl font-semibold mb-4">Step 3: Energy Usage</h2>
+          {/* Energy Usage Form */}
           <div className="mb-4">
             <label className="block text-gray-700">
               Electricity Consumption (kWh/month)
@@ -229,17 +267,39 @@ const Form = ({ onComplete }) => {
               className="w-full border rounded p-2"
             />
           </div>
-          <button
-            onClick={() => setStep(4)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Next
-          </button>
+          <div className="mb-4">
+            <label className="block text-gray-700">Primary Energy Source</label>
+            <select
+              name="primarySource"
+              value={formData.energy.primarySource}
+              onChange={(e) => handleNestedChange(e, "energy")}
+              className="w-full border rounded p-2"
+            >
+              <option value="">Select</option>
+              <option value="Renewable">Renewable</option>
+              <option value="Non-renewable">Non-renewable</option>
+            </select>
+          </div>
+          <div className="flex justify-between">
+            <button
+              onClick={handlePreviousStep}
+              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Previous
+            </button>
+            <button
+              onClick={handleNextStep}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
       {step === 4 && (
         <div>
           <h2 className="text-xl font-semibold mb-4">Step 4: Lifestyle</h2>
+          {/* Lifestyle Form */}
           <div className="mb-4">
             <label className="block text-gray-700">
               Do you compost or recycle?
@@ -253,12 +313,20 @@ const Form = ({ onComplete }) => {
             />
             Yes
           </div>
-          <button
-            onClick={handleSubmit}
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Submit
-          </button>
+          <div className="flex justify-between">
+            <button
+              onClick={handlePreviousStep}
+              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Previous
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Submit
+            </button>
+          </div>
         </div>
       )}
     </div>

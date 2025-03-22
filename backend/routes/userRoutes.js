@@ -1,6 +1,7 @@
 import express from "express";
 import User from "../models/User.js";
 import { protect } from "../middleware/auth.js"; // Use the provided auth middleware
+import { saveUserData } from "../controllers/userController.js"; // Import saveUserData controller
 
 const router = express.Router();
 
@@ -17,6 +18,9 @@ router.get("/user-data", protect, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// Save user data
+router.post("/user-data", protect, saveUserData); // Add POST route for saving user data
 
 // Get all users for comparison
 router.get("/users", protect, async (req, res) => {

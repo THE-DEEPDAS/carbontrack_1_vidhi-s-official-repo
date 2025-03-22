@@ -87,21 +87,19 @@ export const AdminUsers = () => {
       setLoading(true);
       setError(null);
       try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          throw new Error("No token found. Please log in again.");
+        }
+
         const response = await fetch("http://localhost:5000/api/users/all", {
-          // Ensure correct URL
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
 
-        if (response.status === 401) {
-          signOut();
-          navigate("/login");
-          return;
-        }
-
         if (!response.ok) {
-          const errorText = await response.text(); // Log the response text for debugging
+          const errorText = await response.text();
           console.error("Fetch users error response:", errorText);
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -115,13 +113,11 @@ export const AdminUsers = () => {
           setUsers([]);
         }
       } catch (error) {
-        if (error instanceof SyntaxError) {
-          setError("Invalid JSON response from server");
-        } else {
-          setError(error.message || "An error occurred while fetching users");
-        }
-        console.error("Fetch users error:", error);
+        console.error("Fetch users error:", error.message);
+        setError(error.message || "An error occurred while fetching users");
         setUsers([]);
+      } finally {
+        setLoading(false);
       }
     };
 

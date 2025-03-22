@@ -19,7 +19,10 @@ export const Login = () => {
       const loginData = await signIn(email, password);
       console.log("Login successful:", loginData);
 
-      // Wait for the user state to update before navigating
+      // Save token to localStorage
+      localStorage.setItem("token", loginData.token);
+
+      // Navigate based on user role
       if (loginData?.user?.role) {
         switch (loginData.user.role) {
           case "admin":

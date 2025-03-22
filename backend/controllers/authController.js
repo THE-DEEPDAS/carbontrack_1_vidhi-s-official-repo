@@ -12,8 +12,8 @@ export const register = async (req, res) => {
   try {
     const { email, password, role, organizationName } = req.body;
 
-    if (!password) {
-      return res.status(400).json({ message: "Password is required" });
+    if (!email || !password || !role) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
     const userExists = await User.findOne({ email });
@@ -21,17 +21,8 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Validate organization name for organization role
     if (role === "organization" && !organizationName) {
       return res.status(400).json({ message: "Organization name is required" });
-    }
-
-    // Validate admin registration (you might want to add more security here)
-    if (role === "admin") {
-      // Add any additional admin validation logic, e.g., require a secret key
-      // Example: if (req.body.adminSecret !== process.env.ADMIN_SECRET) {
-      //   return res.status(403).json({ message: "Not authorized to register as admin" });
-      // }
     }
 
     const user = await User.create({

@@ -24,7 +24,11 @@ export const useAuthStore = create(
           });
 
           const data = await response.json();
-          if (!response.ok) throw new Error(data.message);
+
+          if (!response.ok) {
+            console.error("SignUp error response:", data); // Log the error response
+            throw new Error(data.message || "Signup failed");
+          }
 
           set({
             user: data.user,
@@ -32,8 +36,13 @@ export const useAuthStore = create(
             error: null,
             loading: false,
           });
+
+          // Save token to localStorage
+          localStorage.setItem("token", data.token);
+
           return data;
         } catch (error) {
+          console.error("SignUp error:", error.message); // Log the error for debugging
           set({ error: error.message, loading: false });
           throw error;
         }
@@ -82,11 +91,17 @@ export const useAuthStore = create(
 
       fetchUserData: async (url) => {
         try {
+          const token = localStorage.getItem("token");
+          if (!token) {
+            throw new Error("No token found. Please log in again.");
+          }
+
           const response = await axios.get(url, {
             headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              Authorization: `Bearer ${token}`, // Ensure token is sent
             },
           });
+
           set({ user: response.data });
           return response.data;
         } catch (error) {

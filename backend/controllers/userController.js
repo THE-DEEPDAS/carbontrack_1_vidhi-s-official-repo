@@ -7,13 +7,45 @@ const saveUserData = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
+    // Ensure all nested properties exist
+    const defaultData = {
+      transport: {
+        primaryMode: "",
+        otherModes: [],
+        weeklyDistance: 0,
+        carFuelType: "",
+        carFuelEfficiency: 0,
+        flightTravel: "",
+      },
+      energy: {
+        electricity: 0,
+        primarySource: "",
+        ledLights: false,
+      },
+      water: {
+        usage: 0,
+      },
+      fuel: {
+        gasUsage: 0,
+        cookingFuelType: "",
+      },
+      lifestyle: {
+        compostRecycle: false,
+      },
+    };
+
+    const updatedData = { ...defaultData, ...req.body };
+
     // Update user data
-    Object.assign(user, req.body);
+    Object.assign(user, updatedData);
     await user.save();
 
     res.status(201).json({ message: "User data saved successfully" });
   } catch (error) {
-    res.status(500).json({ error: "Failed to save user data" });
+    console.error("Error saving user data:", error.message); // Log detailed error
+    res
+      .status(500)
+      .json({ error: "Failed to save user data", details: error.message });
   }
 };
 
@@ -53,7 +85,10 @@ const getUserData = async (req, res) => {
 
     res.status(200).json({ ...defaultData, ...userData.toObject() });
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch user data" });
+    console.error("Error fetching user data:", error.message); // Log detailed error
+    res
+      .status(500)
+      .json({ error: "Failed to fetch user data", details: error.message });
   }
 };
 

@@ -18,12 +18,13 @@ export const SignUp = () => {
       await signUp(email, password, role, organizationName);
       navigate(
         role === "admin"
-          ? "/admin/dashboard"
+          ? "/admin"
           : role === "organization"
-          ? "/org/dashboard"
+          ? "/org"
           : "/dashboard"
       );
     } catch (err: any) {
+      console.error("Signup error:", err.message); // Log the error for debugging
       setError(err.message);
     }
   };

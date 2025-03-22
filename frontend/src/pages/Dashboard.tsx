@@ -147,20 +147,23 @@ const Dashboard = () => {
   }
 
   // Safely access nested properties with optional chaining
-  const transport = userData.transport || {};
-  const energy = userData.energy || {};
-  const water = userData.water || {};
-  const fuel = userData.fuel || {};
-  const lifestyle = userData.lifestyle || {};
+  const transport = userData?.transport || {};
+  const energy = userData?.energy || {};
+  const water = userData?.water || {};
+  const fuel = userData?.fuel || {};
+  const lifestyle = userData?.lifestyle || {};
 
   // Calculate Carbon Footprint
   const transportCO2 =
-    transport.primaryMode === "Car" ? transport.weeklyDistance * 0.2 * 4.33 : 0;
-  const energyCO2 = energy.electricity * 0.5;
-  const gasCO2 = fuel.gasUsage * 2.3;
+    transport.primaryMode === "Car"
+      ? (transport.weeklyDistance || 0) * 0.2 * 4.33
+      : 0;
+  const energyCO2 = (energy.electricity || 0) * 0.5;
+  const gasCO2 = (fuel.gasUsage || 0) * 2.3;
   const cookingCO2 = fuel.cookingFuelType === "LPG" ? 0.3 : 0;
-  const waterCO2 = water.usage * 0.001;
+  const waterCO2 = (water.usage || 0) * 0.001;
   let totalCO2 = transportCO2 + energyCO2 + gasCO2 + cookingCO2 + waterCO2;
+
   if (lifestyle.compostRecycle) {
     totalCO2 *= 0.95;
   }
@@ -168,7 +171,9 @@ const Dashboard = () => {
   const totalCarbonFootprint = Math.round(totalCO2);
   const roundedTransportCO2 = Math.round(transportCO2);
   const totalFuelUsage =
-    fuel.cookingFuelType === "LPG" ? fuel.gasUsage + 0.5 : fuel.gasUsage;
+    fuel.cookingFuelType === "LPG"
+      ? (fuel.gasUsage || 0) + 0.5
+      : fuel.gasUsage || 0;
 
   // Refined user level logic based on CO2 ranges
   const getUserLevel = (totalCO2) => {
@@ -192,11 +197,14 @@ const Dashboard = () => {
     },
     {
       title: "Energy Usage",
-      value: `${energy.electricity} kWh, ${totalFuelUsage.toFixed(1)} m³`,
+      value: `${energy.electricity || 0} kWh, ${totalFuelUsage.toFixed(1)} m³`,
       unit: "Electricity, Fuel",
-      change: energy.electricity > 200 || totalFuelUsage > 10 ? "+20%" : "-10%",
+      change:
+        (energy.electricity || 0) > 200 || totalFuelUsage > 10
+          ? "+20%"
+          : "-10%",
       icon: <Zap className="h-6 w-6 text-yellow-500" />,
-      positive: energy.electricity <= 200 && totalFuelUsage <= 10,
+      positive: (energy.electricity || 0) <= 200 && totalFuelUsage <= 10,
     },
     {
       title: "Transport Emissions",
