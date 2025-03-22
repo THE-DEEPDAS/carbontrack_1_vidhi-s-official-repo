@@ -43,7 +43,7 @@ export const OrgNavbar = () => {
                   : "text-gray-600 hover:bg-blue-100"
               }`}
             >
-              Employees
+              Departments
             </Link>
             <Link
               to="/org/reports"
@@ -54,6 +54,16 @@ export const OrgNavbar = () => {
               }`}
             >
               Reports
+            </Link>
+            <Link
+              to="/org/incentives" // Ensure this matches the route in App.tsx
+              className={`px-3 py-2 rounded-md text-sm font-medium ${
+                isActive("/org/incentives")
+                  ? "bg-blue-500 text-white"
+                  : "text-gray-600 hover:bg-blue-100"
+              }`}
+            >
+              Incentives
             </Link>
             <button
               onClick={signOut}

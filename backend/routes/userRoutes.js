@@ -1,11 +1,10 @@
-// backend/routes/userRoutes.js
-import express from 'express';
-import { getAllUsers } from '../controllers/userController.js'; // Import from userController
-import { protect } from '../middleware/auth.js';
+import express from "express";
+import { saveUserData, getUserData } from "../controllers/userController.js";
+import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Route to get all users (admin only)
-router.get('/all', protect, getAllUsers);
+router.post("/user-data", protect, saveUserData); // Save user data
+router.get("/user-data", protect, getUserData); // Get user data
 
 export default router;

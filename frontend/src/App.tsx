@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { useAuthStore } from "./store/authStore";
 import { Login } from "./pages/Login";
 import { SignUp } from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
 import Monitoring from "./pages/Monitoring";
+import { Certificates } from "./pages/Certificates";
 import { Analysis } from "./pages/Analysis";
 import { Certificates } from "./pages/Certificates";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
@@ -13,44 +14,31 @@ import { AdminUsers } from "./pages/admin/AdminUsers";
 import { OrgDashboard } from "./pages/organization/OrgDashboard";
 import { OrgEmployees } from "./pages/organization/OrgEmployees";
 import { OrgReports } from "./pages/organization/OrgReports";
+import IncentivesPage from "./pages/organization/incentives";
 import AdminLayout from "./layouts/AdminLayout";
 import OrgLayout from "./layouts/OrgLayout";
 import UserLayout from "./layouts/UserLayout";
+import Form from "./pages/Form";
+import ErrorBoundary from "./components/ErrorBoundary";
+
+const API_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"; // Use Vite's environment variable
 
 function App() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
+  const fetchUserData = useAuthStore((state) => state.fetchUserData);
+  const [isFormComplete, setIsFormComplete] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      fetch(`http://localhost:5000/api/auth/profile`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (!data.error) {
-            setUser({
-              id: data._id,
-              email: data.email,
-              role: data.role,
-              organizationName: data.organizationName || null,
-            });
-          } else {
-            // Token invalid or user fetch failed
-            localStorage.removeItem("token");
-            setUser(null);
-          }
-        })
-        .catch(() => {
-          // Network or token error
-          localStorage.removeItem("token");
-          setUser(null);
-        });
+      fetchUserData(`${API_URL}/auth/profile`).catch(() => {
+        localStorage.removeItem("token");
+        setUser(null);
+      });
     }
-  }, [setUser]);
+  }, [fetchUserData, setUser]);
 
   return (
     <BrowserRouter>
@@ -62,26 +50,28 @@ function App() {
         </nav>
       )}
 
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
+      <ErrorBoundary>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
 
-        {/* Admin protected routes */}
-        <Route path="/admin/*" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="organizations" element={<AdminOrganizations />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="*" element={<Navigate to="/admin" replace />} />
-        </Route>
+          {/* Admin protected routes */}
+          <Route path="/admin/*" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="organizations" element={<AdminOrganizations />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
+          </Route>
 
-        {/* Organization protected routes */}
-        <Route path="/org/*" element={<OrgLayout />}>
-          <Route index element={<OrgDashboard />} />
-          <Route path="employees" element={<OrgEmployees />} />
-          <Route path="reports" element={<OrgReports />} />
-          <Route path="*" element={<Navigate to="/org" replace />} />
-        </Route>
+          {/* Organization protected routes */}
+          <Route path="/org/*" element={<OrgLayout />}>
+            <Route index element={<OrgDashboard />} />
+            <Route path="employees" element={<OrgEmployees />} />
+            <Route path="reports" element={<OrgReports />} />
+            <Route path="incentives" element={<IncentivesPage />} />
+            <Route path="*" element={<Navigate to="/org" replace />} />
+          </Route>
 
         {/* User protected routes */}
         <Route element={<UserLayout />}>
@@ -91,42 +81,47 @@ function App() {
           <Route path="/certificates" element={<Certificates />} />
         </Route>
 
-        {/* Default route - if logged in, redirect to appropriate dashboard */}
-        <Route
-          path="/"
-          element={
-            user ? (
-              user.role === "admin" ? (
-                <Navigate to="/admin" replace />
-              ) : user.role === "organization" ? (
-                <Navigate to="/org" replace />
+          {/* Default route */}
+          <Route
+            path="/"
+            element={
+              user ? (
+                user.role === "admin" ? (
+                  <Navigate to="/admin" replace />
+                ) : user.role === "organization" ? (
+                  <Navigate to="/org" replace />
+                ) : !isFormComplete ? (
+                  <Form onComplete={() => setIsFormComplete(true)} />
+                ) : (
+                  <Navigate to="/dashboard" replace />
+                )
               ) : (
-                <Navigate to="/dashboard" replace />
+                <Navigate to="/signup" replace />
               )
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
+            }
+          />
 
-        {/* Fallback route */}
-        <Route
-          path="*"
-          element={
-            user ? (
-              user.role === "admin" ? (
-                <Navigate to="/admin" replace />
-              ) : user.role === "organization" ? (
-                <Navigate to="/org" replace />
+          {/* Fallback route */}
+          <Route
+            path="*"
+            element={
+              user ? (
+                user.role === "admin" ? (
+                  <Navigate to="/admin" replace />
+                ) : user.role === "organization" ? (
+                  <Navigate to="/org" replace />
+                ) : !isFormComplete ? (
+                  <Form onComplete={() => setIsFormComplete(true)} />
+                ) : (
+                  <Navigate to="/dashboard" replace />
+                )
               ) : (
-                <Navigate to="/dashboard" replace />
+                <Navigate to="/login" replace />
               )
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-      </Routes>
+            }
+          />
+        </Routes>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

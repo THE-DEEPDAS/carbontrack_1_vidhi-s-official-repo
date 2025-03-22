@@ -8,24 +8,35 @@ export const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const signIn = useAuthStore((state) => state.signIn);
+  const { signIn, user } = useAuthStore((state) => ({
+    signIn: state.signIn,
+    user: state.user,
+  }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { user } = await signIn(email, password); // Get the user object from signIn
-      // Navigate based on user role
-      switch (user.role) {
-        case "admin":
-          navigate("/admin");
-          break;
-        case "organization":
-          navigate("/org");
-          break;
-        default:
-          navigate("/dashboard");
+      const loginData = await signIn(email, password);
+      console.log("Login successful:", loginData);
+
+      // Wait for the user state to update before navigating
+      if (loginData?.user?.role) {
+        switch (loginData.user.role) {
+          case "admin":
+            navigate("/admin");
+            break;
+          case "organization":
+            navigate("/org");
+            break;
+          default:
+            navigate("/dashboard");
+            break;
+        }
+      } else {
+        console.error("User role not found in login response.");
       }
     } catch (err: any) {
+      console.error("Login error:", err);
       setError(err.message);
     }
   };

@@ -27,6 +27,14 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((error) => console.error("MongoDB connection error:", error));
 
+// Global error handler for uncaught exceptions
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err.message);
+  res
+    .status(500)
+    .json({ message: "Internal Server Error", error: err.message });
+});
+
 const PORT = process.env.PORT || 5000;
 app
   .listen(PORT, () => {

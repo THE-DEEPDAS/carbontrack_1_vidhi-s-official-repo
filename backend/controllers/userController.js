@@ -1,24 +1,60 @@
-// backend/controllers/userController.js
-import User from '../models/User.js';
+import User from "../models/User.js"; // Use ES module import
 
-// Fetch all users (admin only)
-export const getAllUsers = async (req, res) => {
+const saveUserData = async (req, res) => {
   try {
-    console.log("getAllUsers - req.user:", req.user);
-    const userRole = req.user && req.user.role ? req.user.role.toLowerCase() : null;
-    console.log("getAllUsers - userRole:", userRole);
-    if (userRole !== 'admin') {
-      console.log("getAllUsers - Unauthorized access attempt");
-      return res.status(403).json({ message: 'Unauthorized' });
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
     }
 
-    // Fetch all users, excluding their passwords
-    const users = await User.find().select('-password').exec();
-    console.log("getAllUsers - Fetched users:", users);
+    // Update user data
+    Object.assign(user, req.body);
+    await user.save();
 
-    res.status(200).json({ success: true, users });
+    res.status(201).json({ message: "User data saved successfully" });
   } catch (error) {
-    console.error("getAllUsers - Error:", error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ error: "Failed to save user data" });
   }
 };
+
+const getUserData = async (req, res) => {
+  try {
+    const userData = await User.findById(req.user.id).select("-password"); // Exclude password
+    if (!userData) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Ensure all nested properties exist
+    const defaultData = {
+      transport: {
+        primaryMode: "",
+        otherModes: [],
+        weeklyDistance: 0,
+        carFuelType: "",
+        carFuelEfficiency: 0,
+        flightTravel: "",
+      },
+      energy: {
+        electricity: 0,
+        primarySource: "",
+        ledLights: false,
+      },
+      water: {
+        usage: 0,
+      },
+      fuel: {
+        gasUsage: 0,
+        cookingFuelType: "",
+      },
+      lifestyle: {
+        compostRecycle: false,
+      },
+    };
+
+    res.status(200).json({ ...defaultData, ...userData.toObject() });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch user data" });
+  }
+};
+
+export { saveUserData, getUserData }; // Use ES module export

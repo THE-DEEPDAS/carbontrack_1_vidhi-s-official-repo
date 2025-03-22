@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"; // Use environment variable
 
 export const useAuthStore = create(
   persist(
@@ -10,6 +11,7 @@ export const useAuthStore = create(
       token: localStorage.getItem("token"),
       loading: true, // Initialize loading as true
       error: null,
+      isFormComplete: false, // Track if the form is completed
 
       signUp: async (email, password, role, organizationName = null) => {
         set({ loading: true, error: null });
@@ -38,6 +40,7 @@ export const useAuthStore = create(
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              Accept: "application/json",
             },
             body: JSON.stringify({ email, password }),
           });
@@ -45,9 +48,10 @@ export const useAuthStore = create(
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.message);
+            throw new Error(data.message || "Login failed");
           }
 
+          // Save token and user data to localStorage and state
           localStorage.setItem("token", data.token);
           set({ user: data.user, token: data.token, error: null, loading: false });
 
@@ -60,7 +64,7 @@ export const useAuthStore = create(
 
       signOut: () => {
         localStorage.removeItem("token");
-        set({ user: null, token: null, loading: false });
+        set({ user: null, token: null, loading: false, isFormComplete: false });
       },
 
       setUser: (user) => set({ user }),

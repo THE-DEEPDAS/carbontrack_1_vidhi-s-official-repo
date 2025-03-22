@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Upload, AlertTriangle, Leaf } from "lucide-react";
+
+const API_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"; // Use environment variable
 
 interface AnalysisResult {
   impact_score: number;
@@ -10,6 +12,9 @@ interface AnalysisResult {
     description: string;
     potential_reduction: number;
   }>;
+  identification?: string;
+  harmful_components?: string;
+  alternatives?: string;
 }
 
 interface HistoryItem {
@@ -21,11 +26,11 @@ interface HistoryItem {
 }
 
 export const Analysis = () => {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [analysis, setAnalysis] = useState(null as AnalysisResult | null);
-  const [history, setHistory] = useState([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
@@ -40,12 +45,9 @@ export const Analysis = () => {
         return;
       }
 
-      const response = await axios.get(
-        "http://localhost:5000/api/analysis/history",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await axios.get(`${API_URL}/analysis/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setHistory(response.data.history);
     } catch (err) {
       setError("Failed to fetch history.");
@@ -81,12 +83,12 @@ export const Analysis = () => {
       }
 
       const response = await axios.post(
-        "http://localhost:5000/api/analysis/product",
+        `${API_URL}/analysis/product`,
         formData,
         {
           headers: {
-            "Content-Type": "multipart/form-data",
             Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
           },
         }
       );
@@ -164,24 +166,50 @@ export const Analysis = () => {
           {analysis && (
             <div className="bg-white p-4 rounded-lg shadow-md">
               <h2 className="text-xl font-semibold mb-4">Analysis Results</h2>
-              <p className="mb-4">
-                <strong>Impact Score:</strong> {analysis.impact_score}/10
+
+              {/* Display LLM outputs */}
+              <p>
+                <strong>Identification:</strong>{" "}
+                {analysis.identification || "No identification available."}
               </p>
-              <p className="mb-4">
-                <strong>Carbon Footprint:</strong> {analysis.carbon_footprint}{" "}
-                kg
+              <p>
+                <strong>Harmful Components:</strong>{" "}
+                {analysis.harmful_components || "No info available."}
               </p>
-              <h3 className="text-lg font-semibold mb-2">Recommendations</h3>
+              <p>
+                <strong>Alternatives:</strong>{" "}
+                {analysis.alternatives || "No alternatives available."}
+              </p>
+
+              {/* Existing fields */}
+              <p className="mt-4">
+                <strong>Impact Score:</strong> {analysis.impact_score || "N/A"}
+                /10
+              </p>
+              <p>
+                <strong>Carbon Footprint:</strong>{" "}
+                {analysis.carbon_footprint || "N/A"} kg
+              </p>
+              <h3 className="text-lg font-semibold mb-2 mt-4">
+                Recommendations
+              </h3>
               <ul className="space-y-2">
-                {analysis.recommendations.map((rec, index) => (
-                  <li key={index} className="p-2 border rounded-lg">
-                    <p className="font-medium">{rec.title}</p>
-                    <p className="text-sm text-gray-500">{rec.description}</p>
-                    <p className="text-sm text-green-500">
-                      Potential Reduction: {rec.potential_reduction}%
-                    </p>
-                  </li>
-                ))}
+                {analysis.recommendations &&
+                analysis.recommendations.length > 0 ? (
+                  analysis.recommendations.map((rec, index) => (
+                    <li key={index} className="p-2 border rounded-lg">
+                      <p className="font-medium">{rec.title || "No Title"}</p>
+                      <p className="text-sm text-gray-500">
+                        {rec.description || "No Description"}
+                      </p>
+                      <p className="text-sm text-green-500">
+                        Potential Reduction: {rec.potential_reduction || 0}%
+                      </p>
+                    </li>
+                  ))
+                ) : (
+                  <p className="text-gray-500">No recommendations available.</p>
+                )}
               </ul>
             </div>
           )}
