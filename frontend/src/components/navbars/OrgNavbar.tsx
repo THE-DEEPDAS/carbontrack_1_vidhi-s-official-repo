@@ -43,7 +43,7 @@ export const OrgNavbar = () => {
                   : "text-gray-600 hover:bg-blue-100"
               }`}
             >
-              Employees
+              Departments
             </Link>
             <Link
               to="/org/reports"

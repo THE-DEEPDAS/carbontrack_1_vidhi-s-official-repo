@@ -4,7 +4,14 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import analysisRoutes from "./routes/analysisRoutes.js";
-import userRoutes from "./routes/userRoutes.js"; // Import user routes
+import userRoutes from "./routes/userRoutes.js";
+import {
+  createDepartment,
+  deleteDepartment,
+  getAllDepartments,
+  generateReport,
+  getDepartmentAverages,
+} from "./controllers/DepartmentController.js";
 
 dotenv.config({});
 
@@ -18,6 +25,13 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/analysis", analysisRoutes); // Ensure this matches the frontend API call
 app.use("/api", userRoutes); // Register user routes
+
+// Department routes
+app.post("/api/departments", createDepartment);
+app.get("/api/departments", getAllDepartments);
+app.delete("/api/departments/:id", deleteDepartment);
+app.get("/api/departments/report", generateReport);
+app.get("/api/departments/averages", getDepartmentAverages);
 
 // Connect to MongoDB
 mongoose
