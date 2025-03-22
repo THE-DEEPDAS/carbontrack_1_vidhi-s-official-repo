@@ -6,6 +6,10 @@ import { v2 as cloudinary } from "cloudinary";
 import dotenv from "dotenv";
 import AnalysisHistory from "../models/analysisHistory.js";
 import axios from "axios"; // For REST API calls
+import pkg from "@google-cloud/vertexai"; // Import the package as default
+import { GoogleAuth } from "google-auth-library"; // Import GoogleAuth for explicit credential loading
+const { VertexAI, auth } = pkg; // Destructure the required components
+import { GoogleGenerativeAI } from "@google/generative-ai"; // Use named import
 
 dotenv.config();
 
@@ -285,76 +289,201 @@ const calculateEmissions = (material, size) => {
   return Math.round(baseEmissions);
 };
 
-// Function to query Hugging Face Inference API
-const queryHuggingFaceModel = async (imageUrl) => {
-  const modelEndpoint =
-    "https://api-inference.huggingface.co/models/google/gemma-3-4b-it";
-  const maxRetries = 3; // Number of retries
-  const retryDelay = 2000; // Delay between retries in milliseconds
+// Function to query Vertex AI Gemini API
+const queryVertexAIGeminiModel = async (imageUrl) => {
+  const projectId = process.env.GCP_PROJECT_ID;
+  const location = "us-central1";
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  if (!projectId) {
+    throw new Error("GCP_PROJECT_ID environment variable is not set.");
+  }
+
+  const MAX_RETRIES = 3; // Maximum number of retries
+  const RETRY_DELAY = 2000; // Delay between retries in milliseconds
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await axios.post(
-        modelEndpoint,
-        { inputs: imageUrl },
+      // Explicitly load credentials from the JSON file
+      const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      if (!credentialsPath) {
+        throw new Error(
+          "GOOGLE_APPLICATION_CREDENTIALS environment variable is not set."
+        );
+      }
 
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.HUGGINGFACE_API_TOKEN}`,
-            "Content-Type": "application/json",
+      const auth = new GoogleAuth({
+        keyFile: credentialsPath,
+        scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+      });
+
+      const vertexAI = new VertexAI({
+        project: projectId,
+        location: location,
+        auth,
+      });
+
+      const model = vertexAI.preview.getGenerativeModel({
+        model: "gemini-pro",
+      });
+      const request = {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `Analyze this image: ${imageUrl}` }],
           },
+        ],
+      };
+      const result = await model.generateContent(request);
+      const response = await result.response;
+
+      // Extract the content from the response
+      const content = response.candidates[0]?.content?.parts[0]?.text;
+
+      // Attempt to parse the content as JSON
+      try {
+        const parsedResponse = JSON.parse(content);
+        return {
+          item_name: parsedResponse.item_name || "Unknown Product",
+          brand: parsedResponse.brand || "Unknown Brand",
+          harmful_components: parsedResponse.harmful_components || ["Unknown"],
+          environmental_impact:
+            parsedResponse.environmental_impact ||
+            "No detailed analysis available.",
+          less_harmful_brands: parsedResponse.less_harmful_brands || [
+            "Unknown",
+          ],
+          alternative_products: parsedResponse.alternative_products || [
+            "Unknown",
+          ],
+        };
+      } catch (jsonError) {
+        console.warn(
+          "Content is not valid JSON. Attempting to extract structured data from Markdown-like response."
+        );
+
+        // Extract structured data from Markdown-like response
+        const extractedData = extractInsightsFromMarkdown(content);
+        if (extractedData) {
+          return extractedData;
         }
+
+        throw new Error(
+          "Vertex AI Gemini API returned an invalid JSON response."
+        );
+      }
+    } catch (error) {
+      console.error(
+        `Error querying Vertex AI Gemini API (Attempt ${attempt}):`,
+        error.message
       );
 
-      if (!response.data || !response.data.length) {
-        throw new Error("Invalid response from Hugging Face API.");
-      }
-
-      // Parse the response to match the expected format
-      const predictions = response.data;
-      return {
-        item_name: predictions[0]?.label || "Unknown Product",
-        brand: "Unknown Brand",
-        harmful_components: ["Unknown"],
-        environmental_impact: "No detailed analysis available.",
-        less_harmful_brands: ["Unknown"],
-        alternative_products: ["Unknown"],
-      };
-    } catch (error) {
-      if (error.response) {
-        const { status, data } = error.response;
-
-        if (status === 403) {
-          console.error("Hugging Face API returned 403 Forbidden.");
-          console.error("Possible causes:");
-          console.error("- Invalid API token.");
-          console.error("- Insufficient permissions.");
-          console.error("- Model access restrictions.");
-          throw new Error(
-            "Hugging Face API access denied. Check your token and model permissions."
-          );
-        } else if (status === 429) {
-          console.error("Hugging Face API rate limit exceeded.");
-          console.error("Retrying...");
-        } else {
-          console.error(`Hugging Face API returned status ${status}:`, data);
-        }
+      if (attempt < MAX_RETRIES) {
+        console.log(`Retrying in ${RETRY_DELAY / 1000} seconds...`);
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
       } else {
-        console.error("Error querying Hugging Face API:", error.message);
-      }
-
-      if (attempt < maxRetries) {
-        console.log(`Retrying in ${retryDelay / 1000} seconds...`);
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
-      } else {
-        throw new Error("Failed to process the item using Hugging Face API.");
+        throw new Error(
+          "Failed to process the item using Vertex AI Gemini API after multiple attempts."
+        );
       }
     }
   }
 };
 
-// Updated analyzeProduct function
+// Helper function to extract insights from Markdown-like responses
+const extractInsightsFromMarkdown = (content) => {
+  try {
+    const insights = {};
+
+    // Extract key sections using regex
+    const itemNameMatch = content.match(/(?<=\*\*Subject:\*\*).+?(?=\n)/);
+    const environmentalImpactMatch = content.match(
+      /(?<=\*\*Mood:\*\*).+?(?=\n)/
+    );
+
+    insights.item_name = itemNameMatch
+      ? itemNameMatch[0].trim()
+      : "Unknown Product";
+    insights.environmental_impact = environmentalImpactMatch
+      ? environmentalImpactMatch[0].trim()
+      : "No detailed analysis available.";
+
+    // Add placeholders for other fields
+    insights.brand = "Unknown Brand";
+    insights.harmful_components = ["Unknown"];
+    insights.less_harmful_brands = ["Unknown"];
+    insights.alternative_products = ["Unknown"];
+
+    return insights;
+  } catch (error) {
+    console.error(
+      "Failed to extract insights from Markdown-like response:",
+      error.message
+    );
+    return null;
+  }
+};
+
+const runGemini = async (prompt) => {
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+  } catch (error) {
+    if (
+      error.status === 400 &&
+      error.errorDetails?.[0]?.reason === "API_KEY_INVALID"
+    ) {
+      console.error(
+        "Invalid API key. Please check your API key in the .env file."
+      );
+    } else {
+      console.error("Gemini error:", error);
+    }
+    return null;
+  }
+};
+
+const runGeminiWithJSONPrompt = async (base64Image) => {
+  const promptAsJSON = JSON.stringify({
+    instructions: "Analyze this product image.",
+    image: base64Image,
+    outputFormat: {
+      item_name: "string",
+      brand: "string",
+      harmful_components: ["string"],
+      environmental_impact: "string",
+    },
+  });
+
+  const geminiResponse = await runGemini(`
+    You will receive instructions in JSON.
+    Read the "instructions" key and the "image" data.
+    Return valid JSON ONLY in this format:
+    {
+      "item_name": "string",
+      "brand": "string",
+      "harmful_components": ["string"],
+      "environmental_impact": "string"
+    }
+    No extra text.
+    ${promptAsJSON}
+  `);
+
+  try {
+    return JSON.parse(geminiResponse);
+  } catch {
+    return {
+      item_name: "Unkno==wn",
+      brand: "Unknown",
+      harmful_components: ["Unknown"],
+      environmental_impact: "No data",
+    };
+  }
+};
+
 export const analyzeProduct = async (req, res) => {
+  console.log("analyzeProduct route hit"); // Debugging log
   try {
     if (!req.file) {
       return res
@@ -386,31 +515,146 @@ export const analyzeProduct = async (req, res) => {
 
     const imageUrl = cloudinaryResult.secure_url;
 
-    // Step 2: Query Hugging Face API for analysis
-    const huggingFaceResponse = await queryHuggingFaceModel(imageUrl);
+    // Step 2: Query Gemini for product identification
+    const identificationPrompt = `
+      Here is the product image in Base64 format:
+      "${b64}"
+      Please identify the product and brand.
+      Return JSON ONLY:
+      {
+        "item_name": "string",
+        "brand": "string"
+      }
+    `;
+    const identificationJSON = await runGemini(identificationPrompt);
+    let identificationObj;
+    try {
+      identificationObj = JSON.parse(identificationJSON);
+    } catch {
+      identificationObj = { item_name: "Unknown", brand: "Unknown" };
+    }
 
-    // Step 3: Save the analysis to the user's history
+    // If item_name or brand is still unknown, run a fallback prompt
+    if (
+      identificationObj.item_name === "Unknown" ||
+      identificationObj.brand === "Unknown"
+    ) {
+      const fallbackPrompt = `
+        The Base64 image is:
+        "${b64}"
+        Please identify the product more precisely and return JSON ONLY:
+        {
+          "item_name": "string",
+          "brand": "string"
+        }
+      `;
+      const fallbackJSON = await runGemini(fallbackPrompt);
+      try {
+        const fallbackData = JSON.parse(fallbackJSON);
+        if (fallbackData.item_name && fallbackData.item_name !== "Unknown") {
+          identificationObj.item_name = fallbackData.item_name;
+        }
+        if (fallbackData.brand && fallbackData.brand !== "Unknown") {
+          identificationObj.brand = fallbackData.brand;
+        }
+      } catch {
+        // If fallback also fails, keep the original unknown
+      }
+    }
+
+    // Step 3: Query Gemini for harmful components
+    const harmfulPrompt = `
+      Base64 image:
+      "${b64}"
+      The item is "${identificationObj.item_name}" by "${identificationObj.brand}".
+      List harmful components.
+      Return JSON ONLY:
+      {
+        "harmful_components": ["string","string"],
+        "environmental_impact": "string"
+      }
+    `;
+    const harmfulJSON = await runGemini(harmfulPrompt);
+    let harmfulObj;
+    try {
+      harmfulObj = JSON.parse(harmfulJSON);
+    } catch {
+      harmfulObj = {
+        harmful_components: ["Unknown"],
+        environmental_impact: "No info",
+      };
+    }
+
+    // Step 4: Query Gemini for alternatives
+    const altPrompt = `
+      Base64 image:
+      "${b64}"
+      The product is "${identificationObj.item_name}" by "${identificationObj.brand}".
+      Suggest greener alternatives.
+      Return JSON ONLY:
+      {
+        "less_harmful_brands": ["string"],
+        "alternative_products": ["string"]
+      }
+    `;
+    const altJSON = await runGemini(altPrompt);
+    let altObj;
+    try {
+      altObj = JSON.parse(altJSON);
+    } catch {
+      altObj = {
+        less_harmful_brands: ["Unknown"],
+        alternative_products: ["Unknown"],
+      };
+    }
+
+    // Step 5: Material & size analysis for impact
+    const material = await determineMaterialFromImage(
+      cloudinaryResult.public_id
+    );
+    const sizeEstimation = await estimateProductDimensions(
+      cloudinaryResult.public_id
+    );
+    const size = sizeEstimation.size;
+    const impact_score = calculateEcoImpactScore(material, size);
+    const carbon_footprint = calculateEmissions(material, size);
+    const recommendations = generateEcoRecommendations(material, size);
+
+    // Step 6: Combine everything
+    const finalAnalysis = {
+      identification: `Item: ${identificationObj.item_name}, Brand: ${identificationObj.brand}`,
+      harmful_components: harmfulObj.harmful_components.join(", "),
+      alternatives: [
+        `Other brands: ${altObj.less_harmful_brands.join(", ")}`,
+        `Products: ${altObj.alternative_products.join(", ")}`,
+      ].join(" | "),
+      impact_score,
+      carbon_footprint,
+      recommendations: recommendations.map((rec) => ({
+        title: rec.title,
+        description: rec.description,
+        potential_reduction: rec.impact,
+      })),
+    };
+
+    // Save the final analysis
     const historyEntry = new AnalysisHistory({
       user: req.user.id,
-      product_description: huggingFaceResponse.item_name || "Unknown Product",
+      product_description: identificationObj.item_name,
       image_url: imageUrl,
-      analysis_result: huggingFaceResponse, // Save the full response from Hugging Face
+      analysis_result: finalAnalysis,
       created_at: new Date(),
     });
-
     await historyEntry.save();
 
-    // Step 4: Return the analysis result
-    return res.status(200).json({
+    // Return final JSON
+    return res.json({
       success: true,
-      image_url: imageUrl,
-      analysis: huggingFaceResponse,
-      history_id: historyEntry._id,
+      analysis: finalAnalysis,
     });
   } catch (error) {
     console.error("Analysis processing error:", error);
     return res.status(500).json({
-      message: "Error processing product analysis",
       error: error.message,
     });
   }

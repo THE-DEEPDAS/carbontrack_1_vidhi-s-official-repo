@@ -34,34 +34,62 @@ export const useAuthStore = create(
 
       signIn: async (email, password) => {
         try {
+          console.log("Making API call to:", `${API_URL}/auth/login`);
           const response = await fetch(`${API_URL}/auth/login`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              Accept: "application/json",
             },
             body: JSON.stringify({ email, password }),
           });
 
+          console.log("API Response status:", response.status);
           const data = await response.json();
+          console.log("API Response data:", data);
 
           if (!response.ok) {
-            throw new Error(data.message);
+            throw new Error(data.message || "Login failed");
           }
 
+          // Save token and user data to localStorage and state
           localStorage.setItem("token", data.token);
           set({ user: data.user, token: data.token, error: null });
 
-          // Fetch user profile to check if the form is completed
-          const profileResponse = await fetch(`${API_URL}/auth/profile`, {
+          return data; // Return login data for redirection
+        } catch (error) {
+          console.error("Sign in error:", error);
+          set({ error: error.message });
+          throw error;
+        }
+      },
+
+      fetchUserData: async () => {
+        try {
+          const token = localStorage.getItem("token");
+          if (!token) throw new Error("No token found");
+
+          const response = await fetch(`${API_URL}/auth/profile`, {
+            method: "GET",
             headers: {
-              Authorization: `Bearer ${data.token}`,
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
             },
           });
-          const profileData = await profileResponse.json();
-          set({ isFormComplete: profileData.isFormComplete || false });
 
-          return data; // Return the user and token
+          if (!response.ok) {
+            if (response.status === 401) {
+              throw new Error("Unauthorized. Please log in again.");
+            }
+            throw new Error("Failed to fetch user data");
+          }
+
+          const data = await response.json();
+          console.log("User data fetched:", data);
+          set({ user: data });
+          return data;
         } catch (error) {
+          console.error("Error fetching user data:", error);
           set({ error: error.message });
           throw error;
         }

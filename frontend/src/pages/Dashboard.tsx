@@ -15,6 +15,8 @@ import {
   Legend,
 } from "chart.js";
 import Form from "./Form"; // Import the Form component
+import { useAuthStore } from "../store/authStore";
+import { useNavigate } from "react-router-dom";
 
 // Register the required components
 ChartJS.register(
@@ -30,44 +32,47 @@ ChartJS.register(
 );
 
 const Dashboard = () => {
+  const fetchUserData = useAuthStore((state) => state.fetchUserData);
+  const signOut = useAuthStore((state) => state.signOut);
   const [userData, setUserData] = useState(null);
-  const [error, setError] = useState(null); // Track errors
+  const [error, setError] = useState("");
   const [selectedMetric, setSelectedMetric] = useState("carbonFootprint"); // Initialize selectedMetric
   const [isEditing, setIsEditing] = useState(false); // Track if the form is being edited
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch user data from the backend
-    axios
-      .get("/api/user-data", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`, // Include token
-        },
-      })
-      .then((response) => {
-        setUserData(response.data);
-      })
-      .catch((err) => {
-        console.error("Error fetching user data:", err.message);
-        setError("Failed to load user data. Please try again later.");
-      });
-  }, []);
+    const getUserData = async () => {
+      try {
+        const data = await fetchUserData();
+        setUserData(data);
+      } catch (err: any) {
+        console.error("Error fetching user data:", err);
+        setError(err.message);
+
+        if (err.message === "Unauthorized. Please log in again.") {
+          signOut();
+          navigate("/login");
+        }
+      }
+    };
+
+    getUserData();
+  }, [fetchUserData, signOut, navigate]);
 
   const handleFormComplete = () => {
     setIsEditing(false);
     // Refetch user data after form submission
-    axios
-      .get("/api/user-data", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      })
-      .then((response) => {
-        setUserData(response.data);
-      })
-      .catch((err) => {
-        console.error("Error fetching user data:", err.message);
-        setError("Failed to load user data. Please try again later.");
-      });
+    const getUserData = async () => {
+      try {
+        const data = await fetchUserData();
+        setUserData(data);
+      } catch (err: any) {
+        console.error("Error fetching user data:", err);
+        setError(err.message);
+      }
+    };
+
+    getUserData();
   };
 
   if (error) {

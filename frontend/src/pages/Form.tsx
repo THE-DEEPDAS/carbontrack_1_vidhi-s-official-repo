@@ -61,7 +61,7 @@ const Form = ({ onComplete }) => {
     } else {
       setFormData((prev) => ({
         ...prev,
-        [name]: value,
+        [name]: value || "", // Ensure empty string for undefined/null
       }));
     }
   };
@@ -72,7 +72,7 @@ const Form = ({ onComplete }) => {
       ...prev,
       [section]: {
         ...prev[section],
-        [name]: type === "checkbox" ? checked : value,
+        [name]: type === "checkbox" ? checked : value || "", // Ensure empty string for undefined/null
       },
     }));
   };

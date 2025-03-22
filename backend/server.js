@@ -16,7 +16,7 @@ app.use(express.json());
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/analysis", analysisRoutes);
+app.use("/api/analysis", analysisRoutes); // Ensure this matches the frontend API call
 app.use("/api", userRoutes); // Register user routes
 
 // Connect to MongoDB

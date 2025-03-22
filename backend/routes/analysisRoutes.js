@@ -28,6 +28,7 @@ const upload = multer({
 
 // Product analysis route
 router.post("/product", protect, upload.single("image"), analyzeProduct);
+// Ensure this route is correctly defined and matches the frontend API call
 
 // Analysis history routes
 router.get("/history", protect, getUserAnalysisHistory);

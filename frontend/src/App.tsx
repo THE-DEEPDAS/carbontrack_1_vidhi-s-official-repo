@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
-import { useAuthStore } from "./store/authStore";
+import { useAuthStore } from "./store/authStore"; // Ensure this import is correct
 import { Login } from "./pages/Login";
 import { SignUp } from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
@@ -21,38 +21,19 @@ import Form from "./pages/Form";
 function App() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
+  const fetchUserData = useAuthStore((state) => state.fetchUserData);
   const [isFormComplete, setIsFormComplete] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      fetch(`http://localhost:5000/api/auth/profile`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (!data.error) {
-            setUser({
-              id: data._id,
-              email: data.email,
-              role: data.role,
-              organizationName: data.organizationName || null,
-            });
-          } else {
-            // Token invalid or user fetch failed
-            localStorage.removeItem("token");
-            setUser(null);
-          }
-        })
-        .catch(() => {
-          // Network or token error
-          localStorage.removeItem("token");
-          setUser(null);
-        });
+      fetchUserData().catch(() => {
+        // Handle errors (e.g., token invalid or network issues)
+        localStorage.removeItem("token");
+        setUser(null);
+      });
     }
-  }, [setUser]);
+  }, [fetchUserData, setUser]);
 
   return (
     <BrowserRouter>
