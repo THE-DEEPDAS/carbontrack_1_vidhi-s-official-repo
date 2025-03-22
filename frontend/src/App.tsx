@@ -14,6 +14,7 @@ import { AdminUsers } from "./pages/admin/AdminUsers";
 import { OrgDashboard } from "./pages/organization/OrgDashboard";
 import { OrgEmployees } from "./pages/organization/OrgEmployees"; // Fixed import
 import { OrgReports } from "./pages/organization/OrgReports";
+import IncentivesPage from "./pages/organization/incentives"; // Ensure this path is correct
 import AdminLayout from "./layouts/AdminLayout";
 import OrgLayout from "./layouts/OrgLayout";
 import UserLayout from "./layouts/UserLayout";
@@ -65,6 +66,7 @@ function App() {
             <Route index element={<OrgDashboard />} />
             <Route path="employees" element={<OrgEmployees />} />
             <Route path="reports" element={<OrgReports />} />
+            <Route path="incentives" element={<IncentivesPage />} />
             <Route path="*" element={<Navigate to="/org" replace />} />
           </Route>
 
