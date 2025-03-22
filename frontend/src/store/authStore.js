@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"; // Use environment variable
 
 export const useAuthStore = create(
   persist(
@@ -34,7 +35,6 @@ export const useAuthStore = create(
 
       signIn: async (email, password) => {
         try {
-          console.log("Making API call to:", `${API_URL}/auth/login`);
           const response = await fetch(`${API_URL}/auth/login`, {
             method: "POST",
             headers: {
@@ -44,9 +44,7 @@ export const useAuthStore = create(
             body: JSON.stringify({ email, password }),
           });
 
-          console.log("API Response status:", response.status);
           const data = await response.json();
-          console.log("API Response data:", data);
 
           if (!response.ok) {
             throw new Error(data.message || "Login failed");

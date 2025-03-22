@@ -9,11 +9,14 @@ export default defineConfig({
       },
     }),
   ],
+  define: {
+    "process.env": {}, // Prevent `process` from being undefined
+  },
   server: {
     host: true, // Allows access via localhost and network IP
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: process.env.VITE_API_BASE_URL || "http://localhost:5000", // Use environment variable
         changeOrigin: true,
         secure: false,
       },

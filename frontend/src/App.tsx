@@ -10,16 +10,18 @@ import { Analysis } from "./pages/Analysis";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { AdminOrganizations } from "./pages/admin/AdminOrganizations";
 import { AdminUsers } from "./pages/admin/AdminUsers";
-// Updated Org imports:
 import { OrgDashboard } from "./pages/organization/OrgDashboard";
-import { OrgEmployees } from "./pages/organization/OrgEmployees"; // Fixed import
+import { OrgEmployees } from "./pages/organization/OrgEmployees";
 import { OrgReports } from "./pages/organization/OrgReports";
-import IncentivesPage from "./pages/organization/incentives"; // Ensure this path is correct
+import IncentivesPage from "./pages/organization/incentives";
 import AdminLayout from "./layouts/AdminLayout";
 import OrgLayout from "./layouts/OrgLayout";
 import UserLayout from "./layouts/UserLayout";
 import Form from "./pages/Form";
 import ErrorBoundary from "./components/ErrorBoundary";
+
+const API_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"; // Use Vite's environment variable
 
 function App() {
   const user = useAuthStore((state) => state.user);
@@ -30,7 +32,7 @@ function App() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      fetchUserData().catch(() => {
+      fetchUserData(`${API_URL}/auth/profile`).catch(() => {
         localStorage.removeItem("token");
         setUser(null);
       });

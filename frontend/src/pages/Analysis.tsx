@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
+const API_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"; // Use environment variable
+
 interface AnalysisResult {
   impact_score: number;
   carbon_footprint: number;
@@ -42,12 +45,9 @@ export const Analysis = () => {
         return;
       }
 
-      const response = await axios.get(
-        "http://localhost:5000/api/analysis/history",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await axios.get(`${API_URL}/analysis/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setHistory(response.data.history);
     } catch (err) {
       setError("Failed to fetch history.");
@@ -83,7 +83,7 @@ export const Analysis = () => {
       }
 
       const response = await axios.post(
-        "http://localhost:5000/api/analysis/product",
+        `${API_URL}/analysis/product`,
         formData,
         {
           headers: {
