@@ -39,6 +39,18 @@ const Dashboard = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [comparisonData, setComparisonData] = useState([]); // For comparison graph
+  const [comparisonUser, setComparisonUser] = useState(""); // Selected user for comparison
+  const [previousCO2, setPreviousCO2] = useState(null); // Track previous CO2 for notifications
+  const [notifications, setNotifications] = useState([
+    {
+      title: "Welcome!",
+      description:
+        "Thank you for signing up. Start tracking your carbon footprint today!",
+      time: "Just now",
+      icon: <Award className="h-5 w-5 text-green-500" />,
+    },
+  ]); // Notifications state
 
   useEffect(() => {
     // Fetch user data from the backend
@@ -50,10 +62,33 @@ const Dashboard = () => {
       })
       .then((response) => {
         setUserData(response.data);
+        setPreviousCO2(response.data.totalCO2 || null); // Initialize previous CO2
       })
       .catch((err) => {
         console.error("Error fetching user data:", err.message);
         setError("Failed to load user data. Please try again later.");
+      });
+
+    // Fetch comparison data dynamically
+    axios
+      .get(`${API_URL}/users`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+      .then((response) => {
+        if (response.data && Array.isArray(response.data)) {
+          const validUsers = response.data.filter(
+            (user) =>
+              user.fullName && user.transport && user.transport.weeklyDistance
+          ); // Ensure valid user data
+          setComparisonData(validUsers);
+        } else {
+          console.error("Invalid response format for comparison data");
+        }
+      })
+      .catch((err) => {
+        console.error("Error fetching user list for comparison:", err.message);
       });
   }, []);
 
@@ -67,13 +102,39 @@ const Dashboard = () => {
         },
       })
       .then((response) => {
-        setUserData(response.data);
+        const updatedData = response.data;
+        setUserData(updatedData);
+
+        // Check for CO2 reduction and add notification
+        if (previousCO2 && updatedData.totalCO2 < previousCO2) {
+          const reduction = previousCO2 - updatedData.totalCO2;
+          setNotifications((prev) => [
+            ...prev,
+            {
+              title: "Great Job!",
+              description: `Your carbon emissions have decreased by ${reduction.toFixed(
+                2
+              )} kg CO₂. Keep it up!`,
+              time: "Just now",
+              icon: <Award className="h-5 w-5 text-green-500" />,
+            },
+          ]);
+        }
+        setPreviousCO2(updatedData.totalCO2);
       })
       .catch((err) => {
         console.error("Error fetching user data:", err.message);
         setError("Failed to load user data. Please try again later.");
       });
   };
+
+  const handleComparisonUserChange = (e) => {
+    setComparisonUser(e.target.value);
+  };
+
+  const filteredComparisonData = comparisonData.filter(
+    (user) => !comparisonUser || user.fullName === comparisonUser
+  );
 
   if (error) {
     return <div className="text-red-500 text-center">{error}</div>;
@@ -106,6 +167,16 @@ const Dashboard = () => {
   const roundedTransportCO2 = Math.round(transportCO2);
   const totalFuelUsage =
     fuel.cookingFuelType === "LPG" ? fuel.gasUsage + 0.5 : fuel.gasUsage;
+
+  // Refined user level logic based on CO2 ranges
+  const getUserLevel = (totalCO2) => {
+    if (totalCO2 < 50) return "Eco Champion";
+    if (totalCO2 < 100) return "Eco Warrior";
+    if (totalCO2 < 200) return "Eco Enthusiast";
+    return "Eco Beginner";
+  };
+
+  const userLevel = getUserLevel(totalCarbonFootprint);
 
   // Quick Insights Data
   const quickInsights = [
@@ -150,15 +221,20 @@ const Dashboard = () => {
     ],
   };
 
-  // Notifications Data
-  const notifications = [
-    {
-      title: "Achievement Unlocked",
-      description: "You've started tracking your carbon footprint!",
-      time: "2 hours ago",
-      icon: <Award className="h-5 w-5 text-green-500" />,
-    },
-  ];
+  // Comparison Chart Data
+  const comparisonChartData = {
+    labels: filteredComparisonData.map((user) => user.name),
+    datasets: [
+      {
+        label: "Carbon Footprint (kg CO₂)",
+        data: filteredComparisonData.map((user) => user.totalCO2),
+        borderColor: "rgba(34, 197, 94, 1)",
+        backgroundColor: "rgba(34, 197, 94, 0.2)",
+        tension: 0.4,
+        fill: true,
+      },
+    ],
+  };
 
   return (
     <div className="flex min-h-screen">
@@ -167,6 +243,7 @@ const Dashboard = () => {
         userData={userData}
         sidebarCollapsed={sidebarCollapsed}
         setSidebarCollapsed={setSidebarCollapsed}
+        userLevel={userLevel} // Pass user level to Sidebar
       />
 
       {/* Main Content */}
@@ -175,6 +252,7 @@ const Dashboard = () => {
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-semibold text-black">EcoTracker</h1>
+              <p className="text-sm text-gray-500">Level: {userLevel}</p>
               <div className="relative">
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
@@ -270,6 +348,66 @@ const Dashboard = () => {
                 <div className="h-80">
                   <Line
                     data={trendsChartData}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          grid: { color: "rgba(0, 0, 0, 0.1)" },
+                          ticks: { color: "rgba(0, 0, 0, 0.7)" },
+                        },
+                        x: {
+                          grid: { display: false },
+                          ticks: { color: "rgba(0, 0, 0, 0.7)" },
+                        },
+                      },
+                      plugins: { legend: { display: false } },
+                    }}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Comparison Chart */}
+            <section className="mb-8">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                  <h2 className="text-lg font-medium text-black">
+                    Compare with Other Users
+                  </h2>
+                  <select
+                    value={comparisonUser}
+                    onChange={handleComparisonUserChange}
+                    className="border rounded p-2"
+                  >
+                    <option value="">All Users</option>
+                    {comparisonData.map((user, index) => (
+                      <option key={index} value={user.fullName}>
+                        {user.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="h-80">
+                  <Line
+                    data={{
+                      labels: filteredComparisonData.map(
+                        (user) => user.fullName
+                      ),
+                      datasets: [
+                        {
+                          label: "Weekly Distance (km)",
+                          data: filteredComparisonData.map(
+                            (user) => user.transport.weeklyDistance
+                          ),
+                          borderColor: "rgba(34, 197, 94, 1)",
+                          backgroundColor: "rgba(34, 197, 94, 0.2)",
+                          tension: 0.4,
+                          fill: true,
+                        },
+                      ],
+                    }}
                     options={{
                       responsive: true,
                       maintainAspectRatio: false,
