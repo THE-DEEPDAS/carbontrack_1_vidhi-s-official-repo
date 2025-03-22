@@ -10,6 +10,7 @@ export const useAuthStore = create(
       token: localStorage.getItem("token"),
       loading: false,
       error: null,
+      isFormComplete: false, // Track if the form is completed
 
       signUp: async (email, password, role, organizationName = null) => {
         try {
@@ -22,6 +23,7 @@ export const useAuthStore = create(
           const data = await response.json();
           if (!response.ok) throw new Error(data.message);
 
+          localStorage.setItem("token", data.token);
           set({ user: data.user, token: data.token, error: null });
           return data;
         } catch (error) {
@@ -49,6 +51,15 @@ export const useAuthStore = create(
           localStorage.setItem("token", data.token);
           set({ user: data.user, token: data.token, error: null });
 
+          // Fetch user profile to check if the form is completed
+          const profileResponse = await fetch(`${API_URL}/auth/profile`, {
+            headers: {
+              Authorization: `Bearer ${data.token}`,
+            },
+          });
+          const profileData = await profileResponse.json();
+          set({ isFormComplete: profileData.isFormComplete || false });
+
           return data; // Return the user and token
         } catch (error) {
           set({ error: error.message });
@@ -58,7 +69,7 @@ export const useAuthStore = create(
 
       signOut: () => {
         localStorage.removeItem("token");
-        set({ user: null, token: null });
+        set({ user: null, token: null, isFormComplete: false });
       },
 
       setUser: (user) => set({ user }),

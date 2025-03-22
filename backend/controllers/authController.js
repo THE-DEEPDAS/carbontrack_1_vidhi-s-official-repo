@@ -3,7 +3,7 @@ import User from "../models/User.js";
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: "5d", // Changed to 5 days
+    expiresIn: "5d",
   });
 };
 
@@ -11,27 +11,23 @@ export const register = async (req, res) => {
   try {
     const { email, password, role, organizationName } = req.body;
 
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Validate organization name for organization role
-    if (role === "organization" && !organizationName) {
-      return res.status(400).json({ message: "Organization name is required" });
-    }
-
-    // Validate admin registration (you might want to add more security here)
-    if (role === "admin") {
-      // Add any additional admin validation logic
-    }
-
-    const user = await User.create({
+    const user = new User({
       email,
-      password,
+      password, // Password will be hashed in the User model's pre-save hook
       role,
       organizationName,
     });
+
+    await user.save();
 
     const token = generateToken(user._id);
 
@@ -45,6 +41,7 @@ export const register = async (req, res) => {
       token,
     });
   } catch (error) {
+    console.error("Error during registration:", error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -52,6 +49,10 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
 
     const user = await User.findOne({ email });
     if (!user) {
@@ -69,12 +70,13 @@ export const login = async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
-        role: user.role, // Include role in the response
+        role: user.role,
         organizationName: user.organizationName || null,
       },
       token,
     });
   } catch (error) {
+    console.error("Error during login:", error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

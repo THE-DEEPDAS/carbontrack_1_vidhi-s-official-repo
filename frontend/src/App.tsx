@@ -1,11 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { useAuthStore } from "./store/authStore";
 import { Login } from "./pages/Login";
 import { SignUp } from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
 import Monitoring from "./pages/Monitoring";
-import {Certificates } from "./pages/Certificates"
+import { Certificates } from "./pages/Certificates";
 import { Analysis } from "./pages/Analysis";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { AdminOrganizations } from "./pages/admin/AdminOrganizations";
@@ -16,10 +16,12 @@ import { OrgReports } from "./pages/organization/OrgReports";
 import AdminLayout from "./layouts/AdminLayout";
 import OrgLayout from "./layouts/OrgLayout";
 import UserLayout from "./layouts/UserLayout";
+import Form from "./pages/Form";
 
 function App() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
+  const [isFormComplete, setIsFormComplete] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -88,7 +90,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/monitoring" element={<Monitoring />} />
           <Route path="/analysis" element={<Analysis />} />
-          <Route path="/certificates" element={<Certificates/>} />
+          <Route path="/certificates" element={<Certificates />} />
         </Route>
 
         {/* Default route - if logged in, redirect to appropriate dashboard */}
@@ -100,11 +102,13 @@ function App() {
                 <Navigate to="/admin" replace />
               ) : user.role === "organization" ? (
                 <Navigate to="/org" replace />
+              ) : !isFormComplete ? (
+                <Form onComplete={() => setIsFormComplete(true)} />
               ) : (
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/signup" replace /> // Redirect to signup if no user
             )
           }
         />
@@ -118,6 +122,8 @@ function App() {
                 <Navigate to="/admin" replace />
               ) : user.role === "organization" ? (
                 <Navigate to="/org" replace />
+              ) : !isFormComplete ? (
+                <Form onComplete={() => setIsFormComplete(true)} />
               ) : (
                 <Navigate to="/dashboard" replace />
               )

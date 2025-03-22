@@ -285,72 +285,71 @@ const calculateEmissions = (material, size) => {
   return Math.round(baseEmissions);
 };
 
-// Function to query Vertex AI for Gemini 1.5 Flash
-const queryGeminiFlash = async (imageUrl) => {
-  try {
-    const prompt = `
-      Analyze the product in the image at the following URL: ${imageUrl}.
-      
-      Perform the following tasks:
-      1. Identify the product name and its brand.
-      2. List the harmful components used in the product's manufacturing process.
-      3. Explain the environmental impact of these components in a way that encourages the user to consider alternatives.
-      4. Suggest less harmful brands that produce similar products.
-      5. Recommend alternative products that serve the same purpose but are more eco-friendly.
-      
-      Return the results in the following JSON format:
-      {
-        "item_name": "Product Name",
-        "brand": "Brand Name",
-        "harmful_components": ["Component 1", "Component 2"],
-        "environmental_impact": "Detailed explanation of the impact",
-        "less_harmful_brands": ["Brand A", "Brand B"],
-        "alternative_products": ["Alternative Product 1", "Alternative Product 2"]
-      }
-    `;
+// Function to query Hugging Face Inference API
+const queryHuggingFaceModel = async (imageUrl) => {
+  const modelEndpoint =
+    "https://api-inference.huggingface.co/models/google/gemma-3-4b-it";
+  const maxRetries = 3; // Number of retries
+  const retryDelay = 2000; // Delay between retries in milliseconds
 
-    const endpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${process.env.GCP_PROJECT_ID}/locations/${process.env.GCP_LOCATION}/publishers/google/models/gemini-1p5-turbo:predict`;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await axios.post(
+        modelEndpoint,
+        { inputs: imageUrl },
 
-    const response = await axios.post(
-      endpoint,
-      {
-        instances: [{ content: prompt }],
-        parameters: {
-          temperature: 0.7,
-          maxOutputTokens: 1024,
-          topP: 0.8,
-          topK: 40,
-        },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.GCP_ACCESS_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (
-      !response.data ||
-      !response.data.predictions ||
-      !response.data.predictions[0].content
-    ) {
-      throw new Error("Invalid response from Vertex AI.");
-    }
-
-    return JSON.parse(response.data.predictions[0].content); // Parse the JSON response
-  } catch (error) {
-    if (error.response && error.response.status === 401) {
-      console.error("Authentication error: Invalid access token.");
-    } else if (error.response && error.response.status === 404) {
-      console.error("Error: The API endpoint is incorrect or does not exist.");
-    } else {
-      console.error(
-        "Error querying Vertex AI:",
-        error.response?.data || error.message
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.HUGGINGFACE_API_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        }
       );
+
+      if (!response.data || !response.data.length) {
+        throw new Error("Invalid response from Hugging Face API.");
+      }
+
+      // Parse the response to match the expected format
+      const predictions = response.data;
+      return {
+        item_name: predictions[0]?.label || "Unknown Product",
+        brand: "Unknown Brand",
+        harmful_components: ["Unknown"],
+        environmental_impact: "No detailed analysis available.",
+        less_harmful_brands: ["Unknown"],
+        alternative_products: ["Unknown"],
+      };
+    } catch (error) {
+      if (error.response) {
+        const { status, data } = error.response;
+
+        if (status === 403) {
+          console.error("Hugging Face API returned 403 Forbidden.");
+          console.error("Possible causes:");
+          console.error("- Invalid API token.");
+          console.error("- Insufficient permissions.");
+          console.error("- Model access restrictions.");
+          throw new Error(
+            "Hugging Face API access denied. Check your token and model permissions."
+          );
+        } else if (status === 429) {
+          console.error("Hugging Face API rate limit exceeded.");
+          console.error("Retrying...");
+        } else {
+          console.error(`Hugging Face API returned status ${status}:`, data);
+        }
+      } else {
+        console.error("Error querying Hugging Face API:", error.message);
+      }
+
+      if (attempt < maxRetries) {
+        console.log(`Retrying in ${retryDelay / 1000} seconds...`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      } else {
+        throw new Error("Failed to process the item using Hugging Face API.");
+      }
     }
-    throw new Error("Failed to process the item using Vertex AI.");
   }
 };
 
@@ -366,6 +365,7 @@ export const analyzeProduct = async (req, res) => {
     // Step 1: Upload the image to Cloudinary
     const b64 = Buffer.from(req.file.buffer).toString("base64");
     const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+    console.log("Uploading image to Cloudinary:", dataURI.substring(0, 100)); // Log the first 100 characters
     const cloudinaryResult = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload(
         dataURI,
@@ -374,23 +374,27 @@ export const analyzeProduct = async (req, res) => {
           tags: ["product-analysis", new Date().toISOString().split("T")[0]],
         },
         (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
+          if (error) {
+            console.error("Cloudinary upload error:", error);
+            reject(error);
+          } else {
+            resolve(result);
+          }
         }
       );
     });
 
     const imageUrl = cloudinaryResult.secure_url;
 
-    // Step 2: Query Gemini 1.5 Flash for analysis
-    const geminiResponse = await queryGeminiFlash(imageUrl);
+    // Step 2: Query Hugging Face API for analysis
+    const huggingFaceResponse = await queryHuggingFaceModel(imageUrl);
 
     // Step 3: Save the analysis to the user's history
     const historyEntry = new AnalysisHistory({
       user: req.user.id,
-      product_description: geminiResponse.item_name || "Unknown Product",
+      product_description: huggingFaceResponse.item_name || "Unknown Product",
       image_url: imageUrl,
-      analysis_result: geminiResponse, // Save the full response from Gemini
+      analysis_result: huggingFaceResponse, // Save the full response from Hugging Face
       created_at: new Date(),
     });
 
@@ -400,7 +404,7 @@ export const analyzeProduct = async (req, res) => {
     return res.status(200).json({
       success: true,
       image_url: imageUrl,
-      analysis: geminiResponse,
+      analysis: huggingFaceResponse,
       history_id: historyEntry._id,
     });
   } catch (error) {
