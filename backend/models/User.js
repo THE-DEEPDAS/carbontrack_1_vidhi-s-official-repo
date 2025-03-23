@@ -34,6 +34,19 @@ const userSchema = new mongoose.Schema({
   lifestyle: {
     compostRecycle: Boolean,
   },
+  vouchers: [{ type: mongoose.Schema.Types.ObjectId, ref: "Voucher" }],
+  wallet: { type: Number, default: 0 },
+  certificates: [
+    {
+      name: String,
+      status: {
+        type: String,
+        enum: ["completed", "in-progress"],
+        default: "in-progress",
+      },
+      eligible: { type: Boolean, default: false }, // Add eligible field
+    },
+  ],
 });
 
 // Hash password before saving

@@ -1,5 +1,4 @@
-// models/UserCertificate.js
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const userGoalSchema = new mongoose.Schema({
   goalId: { type: mongoose.Schema.Types.ObjectId, required: true }, // Reference to the goal in the Certificate model
@@ -9,12 +8,19 @@ const userGoalSchema = new mongoose.Schema({
 });
 
 const userCertificateSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // The user working on this certificate
-  certificateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Certificate', required: true }, // The global certificate
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // The user working on this certificate
+  certificateId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Certificate",
+    required: true,
+  }, // The global certificate
   goals: [userGoalSchema], // Tracks the user's progress for each goal
   progress: { type: Number, default: 0 }, // Percentage of goals completed
   eligible: { type: Boolean, default: false }, // Whether the user can download the certificate
   verified: { type: Boolean, default: false }, // Whether all goals are verified by the admin
+  completionDate: { type: Date }, // Date when the certificate was completed
 });
 
-export default mongoose.model('UserCertificate', userCertificateSchema);
+// Prevent recompilation of the model
+export default mongoose.models.UserCertificate ||
+  mongoose.model("UserCertificate", userCertificateSchema, "usercertificates");

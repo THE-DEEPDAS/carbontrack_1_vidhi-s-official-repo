@@ -70,14 +70,17 @@ export const login = async (req, res) => {
     }
 
     // Generate token with role included
-    const token = generateToken(user._id, user.role);
+    const token = jwt.sign(
+      { id: user._id, role: user.role }, // Include role in the payload
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
 
     res.status(200).json({
       success: true, // Added success field for consistency
       user: {
         id: user._id,
         email: user.email,
-        role: user.role,
         role: user.role,
         organizationName: user.organizationName || null,
       },

@@ -16,7 +16,7 @@ export default defineConfig({
     host: true, // Allows access via localhost and network IP
     proxy: {
       "/api": {
-        target: process.env.VITE_API_BASE_URL || "http://localhost:5000", // Use environment variable
+        target: "http://localhost:5000", // Backend server URL
         changeOrigin: true,
         secure: false,
       },

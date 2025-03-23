@@ -51,6 +51,8 @@ const Dashboard = () => {
       icon: <Award className="h-5 w-5 text-green-500" />,
     },
   ]); // Notifications state
+  const [vouchers, setVouchers] = useState([]); // Store available vouchers
+  const [wallet, setWallet] = useState(0); // Store wallet balance
 
   useEffect(() => {
     // Fetch user data from the backend
@@ -92,6 +94,21 @@ const Dashboard = () => {
       .catch((err) => {
         console.error("Error fetching user list for comparison:", err.message);
       });
+
+    // Fetch vouchers and wallet balance
+    axios
+      .get(`${API_URL}/vouchers`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+      .then((response) => {
+        setVouchers(response.data.vouchers || []);
+        setWallet(response.data.wallet || 0);
+      })
+      .catch((err) => {
+        console.error("Error fetching vouchers:", err.message);
+      });
   }, []);
 
   const handleFormComplete = () => {
@@ -132,6 +149,28 @@ const Dashboard = () => {
 
   const handleComparisonUserChange = (e) => {
     setComparisonUser(e.target.value);
+  };
+
+  const handleClaimVoucher = (voucherId) => {
+    axios
+      .post(
+        `${API_URL}/claim-voucher`,
+        { voucherId },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      )
+      .then((response) => {
+        alert("Voucher claimed successfully!");
+        setWallet(response.data.wallet); // Update wallet balance
+        setVouchers((prev) => prev.filter((v) => v._id !== voucherId)); // Remove claimed voucher
+      })
+      .catch((err) => {
+        console.error("Error claiming voucher:", err.message);
+        alert("Failed to claim voucher. Please try again.");
+      });
   };
 
   const filteredComparisonData = comparisonData.filter(
@@ -436,6 +475,49 @@ const Dashboard = () => {
                     }}
                   />
                 </div>
+              </div>
+            </section>
+
+            {/* Vouchers Section */}
+            <section className="mb-8">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <h2 className="text-lg font-medium text-black mb-4">
+                  Available Vouchers
+                </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Wallet Balance: <strong>${wallet}</strong>
+                </p>
+                {vouchers.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {vouchers.map((voucher) => (
+                      <div
+                        key={voucher._id}
+                        className="bg-gray-50 rounded-lg shadow-sm p-4 border border-gray-200"
+                      >
+                        <h3 className="text-sm font-medium text-black">
+                          Voucher from:{" "}
+                          {voucher.organization?.toString() || "Unknown Org"}
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                          {voucher.description || "No description provided"}
+                        </p>
+                        <p className="text-sm font-semibold text-green-600 mt-2">
+                          ${voucher.amount || "N/A"}
+                        </p>
+                        <button
+                          onClick={() => handleClaimVoucher(voucher._id)}
+                          className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md"
+                        >
+                          Claim Voucher
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    No vouchers available.
+                  </p>
+                )}
               </div>
             </section>
 

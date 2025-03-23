@@ -6,6 +6,8 @@ import authRoutes from "./routes/authRoutes.js";
 import analysisRoutes from "./routes/analysisRoutes.js";
 import certificateRoutes from "./routes/certificateRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import voucherRoutes from "./routes/voucherRoutes.js";
+import departmentRoutes from "./routes/departmentRoutes.js";
 
 dotenv.config({});
 
@@ -20,6 +22,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/analysis", analysisRoutes);
 app.use("/api/certificates", certificateRoutes);
 app.use("/api", userRoutes); // Ensure this mounts userRoutes at /api
+app.use("/api", voucherRoutes);
+app.use("/api", departmentRoutes);
 
 // Connect to MongoDB
 mongoose
