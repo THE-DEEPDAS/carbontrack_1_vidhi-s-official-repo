@@ -24,7 +24,6 @@ ChartJS.register(
 
 function OrgDashboard() {
   const [departments, setDepartments] = useState([]);
-  const [averages, setAverages] = useState({ avgEnergy: 0, avgCarbon: 0 });
   const signOut = useAuthStore((state) => state.signOut);
 
   useEffect(() => {
@@ -36,13 +35,6 @@ function OrgDashboard() {
         setDepartments(res.data);
       })
       .catch((err) => console.error("Error fetching departments:", err));
-    axios
-      .get("/api/departments/averages")
-      .then((res) => {
-        console.log("Averages fetched:", res.data);
-        setAverages(res.data);
-      })
-      .catch((err) => console.error("Error fetching averages:", err));
   }, []);
 
   const energyData = {
@@ -52,11 +44,6 @@ function OrgDashboard() {
         label: "Energy Usage (kWh)",
         backgroundColor: "rgba(54,162,235,0.6)",
         data: departments.map((d) => d.energyUsage),
-      },
-      {
-        label: "Average Energy Usage",
-        backgroundColor: "rgba(54,162,235,0.3)",
-        data: departments.map(() => averages.avgEnergy),
       },
     ],
   };
@@ -68,11 +55,6 @@ function OrgDashboard() {
         label: "Carbon Footprint (kg CO₂)",
         backgroundColor: "rgba(255,99,132,0.6)",
         data: departments.map((d) => d.carbonFootprint),
-      },
-      {
-        label: "Average Carbon Footprint",
-        backgroundColor: "rgba(255,99,132,0.3)",
-        data: departments.map(() => averages.avgCarbon),
       },
     ],
   };
@@ -124,6 +106,12 @@ function OrgDashboard() {
               },
             }}
           />
+        </div>
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold">Raw Department Data</h2>
+          <pre className="text-xs bg-gray-100 p-2">
+            {JSON.stringify(departments, null, 2)}
+          </pre>
         </div>
       </div>
     </div>

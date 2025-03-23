@@ -7,4 +7,7 @@ const organizationSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// Ensure no default organizations are added programmatically
+// If there is a seed script or initialization logic, remove the default organizations
+
 export default mongoose.model("Organization", organizationSchema);

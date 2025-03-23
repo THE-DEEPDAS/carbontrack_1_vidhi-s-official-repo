@@ -1,10 +1,14 @@
 import mongoose from "mongoose";
 
-const DepartmentSchema = new mongoose.Schema({
+const departmentSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  energyUsage: { type: Number, default: 0 },
-  carbonFootprint: { type: Number, default: 0 },
+  energyUsage: { type: Number, required: true },
+  carbonFootprint: { type: Number, required: true },
+  createdAt: { type: Date },
 });
 
-const Department = mongoose.model("Department", DepartmentSchema);
-export default Department;
+// Ensure no default departments are added programmatically
+// Confirm no default departments are added here or in database initialization
+// Remove any seed logic or hardcoded data in the database initialization
+
+export default mongoose.model("Department", departmentSchema);

@@ -23,7 +23,7 @@ app.use("/api/analysis", analysisRoutes);
 app.use("/api/certificates", certificateRoutes);
 app.use("/api", userRoutes); // Ensure this mounts userRoutes at /api
 app.use("/api/vouchers", voucherRoutes); // Ensure this matches the frontend API calls
-app.use("/api", departmentRoutes);
+app.use("/api/departments", departmentRoutes); // Ensure this matches the frontend API calls
 
 // Connect to MongoDB
 mongoose

@@ -6,6 +6,7 @@ const IncentivesPage = () => {
   useEffect(() => {
     const processData = async () => {
       const messages: string[] = [];
+      
       messages.push(
         "Welcome to the Incentives Page: Your Carbon Footprint Analysis and Govt Incentives"
       );
@@ -37,10 +38,17 @@ const IncentivesPage = () => {
   }, []);
 
   return (
-    <div>
-      {output.map((line, index) => (
-        <p key={index}>{line}</p>
-      ))}
+    <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
+      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+        <h1 className="text-3xl font-bold text-center mb-6 text-blue-600">
+          Incentives Page
+        </h1>
+        {output.map((line, index) => (
+          <p key={index} className="text-lg text-gray-700 my-4">
+            {line}
+          </p>
+        ))}
+      </div>
     </div>
   );
 };

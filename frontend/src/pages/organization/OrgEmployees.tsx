@@ -7,7 +7,6 @@ export const OrgEmployees = () => {
   const [name, setName] = useState("");
   const [energyUsage, setEnergyUsage] = useState("");
   const [carbonFootprint, setCarbonFootprint] = useState("");
-  const [logisticScore, setLogisticScore] = useState(""); // New optional field
   const [selectedDept, setSelectedDept] = useState("none");
 
   useEffect(() => {
@@ -16,37 +15,53 @@ export const OrgEmployees = () => {
 
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get("/api/departments");
-      setDepartments(res.data);
+      const token = localStorage.getItem("token");
+      const res = await axios.get("/api/departments", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("Fetched in OrgEmployees:", res.data); // Debug log
+      setDepartments(res.data); // Update with all departments
     } catch (err) {
-      console.error("Error fetching departments:", err);
+      console.error("Error fetching departments:", err.response?.data || err.message);
+      alert("Failed to fetch departments.");
     }
   };
 
   const handleCreate = async () => {
     try {
-      await axios.post("/api/departments", {
-        name,
-        energyUsage: Number(energyUsage),
-        carbonFootprint: Number(carbonFootprint),
-        logisticScore: logisticScore ? Number(logisticScore) : 0,
-      });
+      const token = localStorage.getItem("token");
+      if (!name || !energyUsage || !carbonFootprint) {
+        alert("All fields are required");
+        return;
+      }
+
+      const res = await axios.post(
+        "/api/departments",
+        { name, energyUsage: Number(energyUsage), carbonFootprint: Number(carbonFootprint) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      console.log("Department created successfully:", res.data); // Debug log
+      setDepartments((prev) => [...prev, res.data]); // Add the new department to the list
       setName("");
       setEnergyUsage("");
       setCarbonFootprint("");
-      setLogisticScore("");
-      fetchDepartments();
     } catch (err) {
-      console.error("Error creating department:", err);
+      console.error("Error creating department:", err.response?.data || err.message);
+      alert("Failed to create department.");
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id) => {
     try {
-      await axios.delete(`/api/departments/${id}`);
+      const token = localStorage.getItem("token");
+      await axios.delete(`/api/departments/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       fetchDepartments();
     } catch (err) {
       console.error("Error deleting department:", err);
+      alert("Failed to delete department.");
     }
   };
 
@@ -57,33 +72,18 @@ export const OrgEmployees = () => {
   const leaderboardCarbon = [...departments]
     .sort((a, b) => b.carbonFootprint - a.carbonFootprint)
     .slice(0, 5);
-  const leaderboardLogistic = [...departments]
-    .sort((a, b) => (b.logisticScore || 0) - (a.logisticScore || 0))
-    .slice(0, 5);
 
   // Individual department graph; shown when a department is selected (dropdown value not "none")
   const selectedDepartment = departments.find((d) => d._id === selectedDept);
   const individualBarData = {
-    labels: [
-      "Energy Usage (kWh)",
-      "Carbon Footprint (kg CO₂)",
-      "Logistic Score",
-    ],
+    labels: ["Energy Usage (kWh)", "Carbon Footprint (kg CO₂)"],
     datasets: [
       {
         label: selectedDepartment ? selectedDepartment.name : "",
         data: selectedDepartment
-          ? [
-              selectedDepartment.energyUsage,
-              selectedDepartment.carbonFootprint,
-              selectedDepartment.logisticScore || 0,
-            ]
-          : [0, 0, 0],
-        backgroundColor: [
-          "rgba(54,162,235,0.6)",
-          "rgba(255,99,132,0.6)",
-          "rgba(75,192,192,0.6)",
-        ],
+          ? [selectedDepartment.energyUsage, selectedDepartment.carbonFootprint]
+          : [0, 0],
+        backgroundColor: ["rgba(54,162,235,0.6)", "rgba(255,99,132,0.6)"],
       },
     ],
   };
@@ -113,13 +113,6 @@ export const OrgEmployees = () => {
           value={carbonFootprint}
           onChange={(e) => setCarbonFootprint(e.target.value)}
         />
-        <input
-          className="border p-2"
-          placeholder="Logistic Score (optional)"
-          type="number"
-          value={logisticScore}
-          onChange={(e) => setLogisticScore(e.target.value)}
-        />
         <button
           onClick={handleCreate}
           className="bg-green-500 text-white px-4 py-2 rounded"
@@ -134,7 +127,6 @@ export const OrgEmployees = () => {
             <th className="p-2 border">Name</th>
             <th className="p-2 border">Energy Usage</th>
             <th className="p-2 border">Carbon Footprint</th>
-            <th className="p-2 border">Logistic</th>
             <th className="p-2 border">Actions</th>
           </tr>
         </thead>
@@ -144,10 +136,12 @@ export const OrgEmployees = () => {
               <td className="p-2 border">{dep.name}</td>
               <td className="p-2 border">{dep.energyUsage}</td>
               <td className="p-2 border">{dep.carbonFootprint}</td>
-              <td className="p-2 border">{dep.logisticScore || "-"}</td>
               <td className="p-2 border">
                 <button
-                  onClick={() => handleDelete(dep._id)}
+                  onClick={() => {
+                    console.log("Deleting department with ID:", dep._id); // Debug log
+                    handleDelete(dep._id);
+                  }}
                   className="bg-red-500 text-white px-2 py-1 rounded"
                 >
                   Delete
@@ -159,7 +153,7 @@ export const OrgEmployees = () => {
       </table>
 
       {/* Leaderboard Section */}
-      <div className="mb-8 grid grid-cols-3 gap-4">
+      <div className="mb-8 grid grid-cols-2 gap-4">
         <div>
           <h3 className="font-semibold mb-2">Top Energy Usage</h3>
           <ol>
@@ -176,16 +170,6 @@ export const OrgEmployees = () => {
             {leaderboardCarbon.map((dep) => (
               <li key={dep._id}>
                 {dep.name}: {dep.carbonFootprint} kg CO₂
-              </li>
-            ))}
-          </ol>
-        </div>
-        <div>
-          <h3 className="font-semibold mb-2">Top Logistic Score</h3>
-          <ol>
-            {leaderboardLogistic.map((dep) => (
-              <li key={dep._id}>
-                {dep.name}: {dep.logisticScore || "-"}
               </li>
             ))}
           </ol>

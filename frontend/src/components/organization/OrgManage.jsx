@@ -17,23 +17,35 @@ function OrgManage() {
       const res = await axios.get("/api/departments");
       setDepartments(res.data);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching departments:", err);
     }
   };
 
   const handleCreate = async () => {
     try {
-      await axios.post("/api/departments", {
+      if (!name || !energyUsage || !carbonFootprint) {
+        alert("All fields are required");
+        return;
+      }
+
+      const response = await axios.post("/api/departments", {
         name,
         energyUsage: Number(energyUsage),
         carbonFootprint: Number(carbonFootprint),
       });
-      fetchDepartments();
+
+      console.log("Department created successfully:", response.data); // Debug log
+
+      // Clear input fields
       setName("");
       setEnergyUsage("");
       setCarbonFootprint("");
+
+      // Fetch updated departments list
+      await fetchDepartments(); // Ensure the updated list is fetched
     } catch (err) {
-      console.error(err);
+      console.error("Error creating department:", err);
+      alert("Failed to create department");
     }
   };
 
@@ -42,7 +54,8 @@ function OrgManage() {
       await axios.delete(`/api/departments/${id}`);
       fetchDepartments();
     } catch (err) {
-      console.error(err);
+      console.error("Error deleting department:", err);
+      alert("Failed to delete department");
     }
   };
 
@@ -109,6 +122,9 @@ function OrgManage() {
         ))}
       </ul>
       <button onClick={handleExportSelected}>Export Selected</button>
+      <pre className="bg-gray-100 p-2 text-xs">
+        {JSON.stringify(departments, null, 2)}
+      </pre>
     </div>
   );
 }

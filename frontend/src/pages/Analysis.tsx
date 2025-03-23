@@ -1,220 +1,308 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
 
 const API_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"; // Use environment variable
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-interface AnalysisResult {
-  impact_score: number;
-  carbon_footprint: number;
-  recommendations: Array<{
-    title: string;
-    description: string;
-    potential_reduction: number;
-  }>;
-  identification?: string;
-  harmful_components?: string;
-  alternatives?: string;
-}
-
-interface HistoryItem {
-  _id: string;
-  product_description: string;
-  image_url: string;
-  created_at: string;
-  analysis_result: AnalysisResult;
-}
-
-export const Analysis = () => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+const Analysis = () => {
+  const [formData, setFormData] = useState({
+    productType: "",
+    material: "",
+    manufacturingLocation: "",
+    usageFrequency: "",
+  });
+  const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    setError(null);
+  };
 
-  const fetchHistory = async () => {
+  const parseLLMResponse = (text) => {
+    // Remove markdown wrappers if present
+    const cleanedText = text.replace(/```(?:json)?/gi, "").trim();
+    let parsedData;
+
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("You must be logged in to view history.");
-        return;
-      }
+      parsedData = JSON.parse(cleanedText);
+    } catch (error) {
+      console.error("Failed to parse JSON response:", error);
+      // Fallback to text parsing if JSON parsing fails
+      const carbonFootprintMatch = cleanedText.match(
+        /carbon footprint.*?(\d+\.?\d*(\s*-\s*\d+\.?\d*)?)\s*kg/i
+      );
+      const recommendationsMatch = cleanedText.match(/recommendations:(.+)/is);
 
-      const response = await axios.get(`${API_URL}/analysis/history`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setHistory(response.data.history);
-    } catch (err) {
-      setError("Failed to fetch history.");
+      return {
+        carbonFootprint: carbonFootprintMatch
+          ? carbonFootprintMatch[1]
+          : "10-100", // Store only the numeric value/range
+        carbonFootprintNote:
+          "Estimated range based on typical product lifecycle if specific data unavailable.",
+        recommendations: recommendationsMatch
+          ? recommendationsMatch[1]
+              .split("\n")
+              .filter(Boolean)
+              .map((item) => item.trim())
+          : [cleanedText],
+        description: cleanedText,
+      };
     }
+
+    // Handle nested environmental_impact structure
+    if (parsedData.environmental_impact) {
+      const envImpact = parsedData.environmental_impact;
+      // Strip units from estimate if present, store only the numeric value/range
+      const carbonFootprintEstimate = envImpact.carbon_footprint?.estimate
+        ? envImpact.carbon_footprint.estimate
+            .replace(/\s*kg\s*CO2e/i, "")
+            .trim()
+        : "10-100";
+      return {
+        carbonFootprint: carbonFootprintEstimate,
+        carbonFootprintNote:
+          envImpact.carbon_footprint?.note ||
+          "Estimated range based on typical product lifecycle if specific data unavailable.",
+        recommendations: Array.isArray(envImpact.recommendations)
+          ? envImpact.recommendations
+          : [envImpact.recommendations || "No recommendations provided"],
+        description: envImpact.description || cleanedText,
+        additionalMetrics: envImpact.additional_metrics || {},
+      };
+    }
+
+    // Fallback for unexpected JSON structure
+    const carbonFootprintValue = parsedData.carbon_footprint
+      ? parsedData.carbon_footprint.replace(/\s*kg\s*CO2e/i, "").trim()
+      : "10-100";
+    return {
+      carbonFootprint: carbonFootprintValue,
+      carbonFootprintNote:
+        "Estimated range based on typical product lifecycle if specific data unavailable.",
+      recommendations: Array.isArray(parsedData.recommendations)
+        ? parsedData.recommendations
+        : [parsedData.recommendations || cleanedText],
+      description: parsedData.description || cleanedText,
+      additionalMetrics: parsedData.additional_metrics || {},
+    };
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      setSelectedFile(event.target.files[0]);
-      setAnalysis(null);
-      setError(null);
-    }
-  };
+  const analyzeProduct = async (e) => {
+    e.preventDefault();
 
-  const analyzeProduct = async () => {
-    if (!selectedFile) {
-      setError("Please select a file to analyze.");
+    if (!formData.productType) {
+      setError("Please specify a product type");
       return;
     }
 
     setLoading(true);
     setError(null);
 
-    const formData = new FormData();
-    formData.append("image", selectedFile);
+    const query = `
+      Provide a detailed description of the environmental impact of a ${
+        formData.productType
+      } 
+      made of ${formData.material || "unspecified material"} 
+      manufactured in ${formData.manufacturingLocation || "unknown location"} 
+      with ${formData.usageFrequency || "average"} usage frequency. 
+      Quantify the impact with specific numbers where possible, including:
+      - Estimated carbon footprint in kg CO2e (provide a range if exact value unavailable).
+      - Additional metrics like energy consumption (in kWh), water usage (in liters), or waste generation (in kg) if applicable.
+      Include recommendations to reduce the impact with potential reduction estimates (e.g., percentage or kg CO2e saved).
+      Return the response in JSON format with an "environmental_impact" object containing:
+      - "description" (string),
+      - "carbon_footprint" (object with "estimate" (string, e.g., "50-100") and "note" (string)),
+      - "additional_metrics" (object with quantified metrics like "energy_consumption", "water_usage", etc.),
+      - "recommendations" (array of strings with quantified reductions where possible).
+    `;
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("You must be logged in to analyze products.");
-        setLoading(false);
-        return;
-      }
-
       const response = await axios.post(
-        `${API_URL}/analysis/product`,
-        formData,
+        `${API_URL}?key=${GEMINI_API_KEY}`,
+        {
+          contents: [
+            {
+              parts: [{ text: query }],
+            },
+          ],
+        },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
+            "Content-Type": "application/json",
           },
         }
       );
 
-      setAnalysis(response.data.analysis);
-      fetchHistory(); // Refresh history after analysis
+      console.log("Raw Gemini API Response:", response.data);
+
+      const result = response.data;
+
+      if (!result.candidates || result.candidates.length === 0) {
+        setError("No analysis available. The API did not return a response.");
+        setAnalysis(null);
+        return;
+      }
+
+      const generatedText =
+        result.candidates[0]?.content?.parts?.[0]?.text ||
+        "No analysis available.";
+      const parsedResult = parseLLMResponse(generatedText);
+
+      setAnalysis(parsedResult);
     } catch (err) {
-      setError("Failed to analyze product.");
+      setError(
+        err.response?.data?.error?.message || "Failed to analyze product"
+      );
+      console.error("API Error:", err.response?.data || err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadHistoryItem = (item: HistoryItem) => {
-    setAnalysis(item.analysis_result);
-    setShowHistory(false);
-  };
-
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Product Analysis</h1>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl bg-white rounded-lg shadow-md p-6">
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">
+          Product Impact Analysis
+        </h1>
 
-      <div className="flex justify-between items-center mb-4">
-        <button
-          onClick={() => setShowHistory(!showHistory)}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg"
-        >
-          {showHistory ? "New Analysis" : "View History"}
-        </button>
-      </div>
-
-      {showHistory ? (
-        <div className="bg-white p-4 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">Analysis History</h2>
-          {history.length === 0 ? (
-            <p className="text-gray-500">No history available.</p>
-          ) : (
-            <ul className="space-y-4">
-              {history.map((item) => (
-                <li
-                  key={item._id}
-                  className="p-4 border rounded-lg cursor-pointer hover:bg-gray-100"
-                  onClick={() => loadHistoryItem(item)}
-                >
-                  <p className="font-medium">{item.product_description}</p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(item.created_at).toLocaleString()}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="bg-white p-4 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Upload Product Image</h2>
+        <form onSubmit={analyzeProduct} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Product Type*
+            </label>
             <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              type="text"
+              name="productType"
+              value={formData.productType}
+              onChange={handleInputChange}
+              placeholder="e.g., shirt, phone"
+              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <button
-              onClick={analyzeProduct}
-              className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg"
-              disabled={loading}
-            >
-              {loading ? "Analyzing..." : "Analyze"}
-            </button>
           </div>
 
-          {error && <p className="text-red-500">{error}</p>}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Primary Material
+            </label>
+            <input
+              type="text"
+              name="material"
+              value={formData.material}
+              onChange={handleInputChange}
+              placeholder="e.g., cotton, plastic"
+              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-          {analysis && (
-            <div className="bg-white p-4 rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold mb-4">Analysis Results</h2>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Manufacturing Location
+            </label>
+            <input
+              type="text"
+              name="manufacturingLocation"
+              value={formData.manufacturingLocation}
+              onChange={handleInputChange}
+              placeholder="e.g., China, USA"
+              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-              {/* Display LLM outputs */}
-              <p>
-                <strong>Identification:</strong>{" "}
-                {analysis.identification || "No identification available."}
-              </p>
-              <p>
-                <strong>Harmful Components:</strong>{" "}
-                {analysis.harmful_components || "No info available."}
-              </p>
-              <p>
-                <strong>Alternatives:</strong>{" "}
-                {analysis.alternatives || "No alternatives available."}
-              </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Usage Frequency
+            </label>
+            <select
+              name="usageFrequency"
+              value={formData.usageFrequency}
+              onChange={handleInputChange}
+              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select frequency</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
 
-              {/* Existing fields */}
-              <p className="mt-4">
-                <strong>Impact Score:</strong> {analysis.impact_score || "N/A"}
-                /10
-              </p>
-              <p>
-                <strong>Carbon Footprint:</strong>{" "}
-                {analysis.carbon_footprint || "N/A"} kg
-              </p>
-              <h3 className="text-lg font-semibold mb-2 mt-4">
-                Recommendations
-              </h3>
-              <ul className="space-y-2">
-                {analysis.recommendations &&
-                analysis.recommendations.length > 0 ? (
-                  analysis.recommendations.map((rec, index) => (
-                    <li key={index} className="p-2 border rounded-lg">
-                      <p className="font-medium">{rec.title || "No Title"}</p>
-                      <p className="text-sm text-gray-500">
-                        {rec.description || "No Description"}
-                      </p>
-                      <p className="text-sm text-green-500">
-                        Potential Reduction: {rec.potential_reduction || 0}%
-                      </p>
-                    </li>
-                  ))
-                ) : (
-                  <p className="text-gray-500">No recommendations available.</p>
-                )}
-              </ul>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 transition-colors"
+          >
+            {loading ? "Analyzing..." : "Analyze Product"}
+          </button>
+        </form>
+
+        {error && <p className="mt-4 text-red-500 text-center">{error}</p>}
+
+        {analysis && (
+          <div className="mt-6 p-4 bg-gray-50 rounded-md">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              Analysis Results
+            </h2>
+            <p className="text-gray-700">
+              <strong>Carbon Footprint:</strong> {analysis.carbonFootprint} kg
+              CO2e
+              {analysis.carbonFootprintNote && (
+                <span className="text-sm text-gray-500 block">
+                  ({analysis.carbonFootprintNote})
+                </span>
+              )}
+            </p>
+            {Object.keys(analysis.additionalMetrics).length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-lg font-medium text-gray-800">
+                  Additional Metrics
+                </h3>
+                <ul className="mt-2 space-y-1">
+                  {Object.entries(analysis.additionalMetrics).map(
+                    ([key, value]) => (
+                      <li key={key} className="text-gray-600">
+                        <strong>
+                          {key
+                            .replace(/_/g, " ")
+                            .replace(/\b\w/g, (c) => c.toUpperCase())}
+                          :
+                        </strong>{" "}
+                        {value}
+                      </li>
+                    )
+                  )}
+                </ul>
+              </div>
+            )}
+            <div className="mt-4">
+              <h3 className="text-lg font-medium text-gray-800">Description</h3>
+              <p className="text-gray-600">{analysis.description}</p>
             </div>
-          )}
-        </div>
-      )}
+            {analysis.recommendations.length > 0 && (
+              <>
+                <h3 className="text-lg font-medium text-gray-800 mt-4">
+                  Recommendations
+                </h3>
+                <ul className="mt-2 space-y-2 list-disc pl-5">
+                  {analysis.recommendations.map((rec, index) => (
+                    <li key={index} className="text-gray-600">
+                      {rec}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
+
+export { Analysis };

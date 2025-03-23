@@ -65,7 +65,7 @@ function StatCard({
 export function OrgDashboard() {
   const [departments, setDepartments] = useState([]);
   const [historicalData, setHistoricalData] = useState<
-    { name: string; energy: number; carbon: number; logistic: number }[]
+    { name: string; energy: number; carbon: number }[]
   >([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [loading, setLoading] = useState(true);
@@ -124,6 +124,12 @@ export function OrgDashboard() {
 
   const fetchVouchers = () => {
     const token = localStorage.getItem("token");
+    if (!token) {
+      console.error("No token found in localStorage");
+      alert("You are not authorized. Please log in again.");
+      return;
+    }
+
     axios
       .get(`${API_URL}/vouchers`, {
         headers: {
@@ -137,6 +143,7 @@ export function OrgDashboard() {
       })
       .catch((err) => {
         console.error("Error fetching vouchers:", err.message);
+        alert("Failed to fetch vouchers. Please try again.");
       });
   };
 
@@ -153,7 +160,6 @@ export function OrgDashboard() {
             name: `Month ${i + 1}`,
             energy: Math.floor(1000 + Math.random() * 500),
             carbon: Math.floor(500 + Math.random() * 300),
-            logistic: Math.floor(200 + Math.random() * 100),
           });
         }
         setHistoricalData(trends);
@@ -180,10 +186,6 @@ export function OrgDashboard() {
     (sum, d) => sum + (d.carbonFootprint || 0),
     0
   );
-  const totalLogistic = departments.reduce(
-    (sum, d) => sum + (d.logisticScore || 0),
-    0
-  );
 
   const departmentData = departments.reduce((acc, dept) => {
     acc[dept.name] = [
@@ -206,7 +208,7 @@ export function OrgDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <StatCard
             title="Total Energy Usage"
             value={`${totalEnergy} kWh`}
@@ -220,13 +222,6 @@ export function OrgDashboard() {
             icon={Leaf}
             trend="down"
             color="bg-gradient-to-br from-rose-100 via-rose-50 to-white"
-          />
-          <StatCard
-            title="Logistic Score"
-            value={`${totalLogistic}`}
-            icon={Truck}
-            trend="up"
-            color="bg-gradient-to-br from-emerald-100 via-emerald-50 to-white"
           />
         </div>
 
@@ -244,7 +239,6 @@ export function OrgDashboard() {
                 <Legend />
                 <Bar dataKey="energy" fill="#60a5fa" name="Energy (kWh)" />
                 <Bar dataKey="carbon" fill="#f87171" name="Carbon (kg CO₂)" />
-                <Bar dataKey="logistic" fill="#34d399" name="Logistic Score" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -275,14 +269,6 @@ export function OrgDashboard() {
                   strokeWidth={2}
                   dot={{ fill: "#f87171" }}
                   name="Carbon (kg CO₂)"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="logistic"
-                  stroke="#34d399"
-                  strokeWidth={2}
-                  dot={{ fill: "#34d399" }}
-                  name="Logistic Score"
                 />
               </LineChart>
             </ResponsiveContainer>
