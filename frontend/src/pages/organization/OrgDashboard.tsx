@@ -96,7 +96,7 @@ export function OrgDashboard() {
 
     axios
       .post(
-        `${API_URL}/offer-voucher`,
+        `${API_URL}/vouchers/offer`, // Ensure this matches the backend route
         { amount: voucherAmount, description: voucherDescription },
         {
           headers: {
