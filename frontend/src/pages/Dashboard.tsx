@@ -495,12 +495,9 @@ const Dashboard = () => {
                         className="bg-gray-50 rounded-lg shadow-sm p-4 border border-gray-200"
                       >
                         <h3 className="text-sm font-medium text-black">
-                          Voucher from:{" "}
-                          {voucher.organization?.toString() || "Unknown Org"}
+                        {voucher.description || "No description provided"}
                         </h3>
-                        <p className="text-xs text-gray-500">
-                          {voucher.description || "No description provided"}
-                        </p>
+                        
                         <p className="text-sm font-semibold text-green-600 mt-2">
                           ${voucher.amount || "N/A"}
                         </p>

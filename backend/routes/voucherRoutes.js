@@ -15,7 +15,10 @@ router.get("/vouchers", protect, async (req, res) => {
     }
 
     // Fetch all available vouchers
-    const vouchers = await Voucher.find({});
+    const vouchers = await Voucher.find({}).populate(
+      "organization",
+      "organizationName"
+    );
     res.json({ vouchers, wallet: user.wallet });
   } catch (err) {
     console.error("Error fetching vouchers:", err);
