@@ -7,7 +7,7 @@ export const AdminNavbar = () => {
   const location = useLocation();
   const signOut = useAuthStore((state) => state.signOut);
   const user = useAuthStore((state) => state.user);
-
+  
   // Only render for admin users
   if (user?.role !== "admin") return null;
 
