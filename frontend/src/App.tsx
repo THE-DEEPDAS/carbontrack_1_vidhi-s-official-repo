@@ -20,7 +20,7 @@ import UserLayout from "./layouts/UserLayout";
 import Form from "./pages/Form";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Navbar from "./components/Navbar";
-
+import LandingPage from "./components/LandingPage";
 const API_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"; // Use Vite's environment variable
 
@@ -97,7 +97,7 @@ function App() {
                   <Navigate to="/dashboard" replace />
                 )
               ) : (
-                <Navigate to="/signup" replace />
+                <LandingPage/>  
               )
             }
           />
@@ -117,7 +117,7 @@ function App() {
                   <Navigate to="/dashboard" replace />
                 )
               ) : (
-                <Navigate to="/login" replace />
+                <Navigate to="/" replace />
               )
             }
           />
