@@ -11,6 +11,8 @@ interface Organization {
   createdAt?: string;
 }
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export const AdminOrganizations = () => {
   const { user, token, loading: authLoading, signOut } = useAuthStore();
   const navigate = useNavigate();
@@ -30,7 +32,7 @@ export const AdminOrganizations = () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch("http://localhost:5000/api/users/all", {
+        const response = await fetch(`${API_URL}/users/all`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -81,9 +83,15 @@ export const AdminOrganizations = () => {
 
       {/* Filter Tabs (Mocked for UI) */}
       <div className="flex space-x-4 mb-6">
-        <button className="px-4 py-2 bg-[#551281] text-white rounded-lg">Active</button>
-        <button className="px-4 py-2 bg-[#A5E1AD] text-[#21094E] rounded-lg">Inactive</button>
-        <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">Pending</button>
+        <button className="px-4 py-2 bg-[#551281] text-white rounded-lg">
+          Active
+        </button>
+        <button className="px-4 py-2 bg-[#A5E1AD] text-[#21094E] rounded-lg">
+          Inactive
+        </button>
+        <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">
+          Pending
+        </button>
       </div>
 
       {/* Table */}
@@ -104,21 +112,35 @@ export const AdminOrganizations = () => {
               className="border rounded-lg px-3 py-1 text-gray-700"
             />
             <button className="p-2 bg-gray-200 rounded-lg">
-              <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="w-5 h-5 text-gray-700"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path d="M10 4a6 6 0 100 12 6 6 0 000-12zm-8 6a8 8 0 1114.32 4.906l3.387 3.387a1 1 0 01-1.414 1.414l-3.387-3.387A8 8 0 012 10z" />
               </svg>
             </button>
             <button className="p-2 bg-gray-200 rounded-lg">
-              <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="w-5 h-5 text-gray-700"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
               </svg>
             </button>
             <button className="p-2 bg-gray-200 rounded-lg">
-              <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="w-5 h-5 text-gray-700"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path d="M6 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm0 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm0 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm0 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z" />
               </svg>
             </button>
-            <button className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg">Export</button>
+            <button className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg">
+              Export
+            </button>
           </div>
         </div>
 
@@ -137,7 +159,10 @@ export const AdminOrganizations = () => {
             </thead>
             <tbody>
               {organizations.map((org) => (
-                <tr key={org._id} className="border-t border-gray-200 hover:bg-gray-50">
+                <tr
+                  key={org._id}
+                  className="border-t border-gray-200 hover:bg-gray-50"
+                >
                   <td className="py-3 px-4">
                     <input type="checkbox" />
                   </td>
@@ -148,7 +173,9 @@ export const AdminOrganizations = () => {
                   <td className="py-3 px-4">{org.email}</td>
                   <td className="py-3 px-4">{org.createdAt || "N/A"}</td>
                   <td className="py-3 px-4">
-                    <button className="px-3 py-1 bg-[#4CA1A3] text-white rounded-lg">Edit</button>
+                    <button className="px-3 py-1 bg-[#4CA1A3] text-white rounded-lg">
+                      Edit
+                    </button>
                   </td>
                 </tr>
               ))}

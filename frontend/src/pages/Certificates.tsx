@@ -36,6 +36,8 @@ interface Certificate {
   verified: boolean;
 }
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export const Certificates = () => {
   const { user, token, signOut } = useAuthStore();
   const navigate = useNavigate();
@@ -46,7 +48,9 @@ export const Certificates = () => {
   useEffect(() => {
     console.log("Certificates.tsx - User:", user, "Token:", token);
     if (!user || !token) {
-      console.log("Certificates.tsx - Redirecting to login: user or token missing");
+      console.log(
+        "Certificates.tsx - Redirecting to login: user or token missing"
+      );
       navigate("/login");
       return;
     }
@@ -55,7 +59,7 @@ export const Certificates = () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch("http://localhost:5000/api/certificates", {
+        const response = await fetch(`${API_URL}/certificates`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -84,7 +88,11 @@ export const Certificates = () => {
     fetchCertificates();
   }, [user, token, navigate, signOut]);
 
-  const handleFileUpload = async (certId: string, goalId: string, file: File | null) => {
+  const handleFileUpload = async (
+    certId: string,
+    goalId: string,
+    file: File | null
+  ) => {
     if (!file) {
       setError("Please select a file to upload");
       return;
@@ -97,7 +105,7 @@ export const Certificates = () => {
     setError(null);
     try {
       const response = await fetch(
-        `http://localhost:5000/api/certificates/upload-proof/${certId}/${goalId}`,
+        `${API_URL}/certificates/upload-proof/${certId}/${goalId}`,
         {
           method: "POST",
           headers: {
@@ -145,7 +153,7 @@ export const Certificates = () => {
     setError(null);
     try {
       const response = await fetch(
-        `http://localhost:5000/api/certificates/download/${certId}`,
+        `${API_URL}/certificates/download/${certId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -177,7 +185,9 @@ export const Certificates = () => {
       document.body.removeChild(link);
       console.log("handleDownload - Download initiated");
     } catch (error) {
-      setError(error.message || "An error occurred while downloading the certificate");
+      setError(
+        error.message || "An error occurred while downloading the certificate"
+      );
       console.error("Download error:", error);
     } finally {
       setLoading(false);
@@ -193,9 +203,13 @@ export const Certificates = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {certificates.map((cert) => {
-          console.log(`Certificate - _id: ${cert._id}, certificateId: ${cert.certificateId}, name: ${cert.name}, verified: ${cert.verified}`);
+          console.log(
+            `Certificate - _id: ${cert._id}, certificateId: ${cert.certificateId}, name: ${cert.name}, verified: ${cert.verified}`
+          );
           // Check if all goals are verified
-          const allGoalsVerified = cert.userGoals.every((userGoal) => userGoal.verified);
+          const allGoalsVerified = cert.userGoals.every(
+            (userGoal) => userGoal.verified
+          );
 
           return (
             <div
@@ -218,7 +232,9 @@ export const Certificates = () => {
               <div className="mb-4">
                 <div className="flex justify-between mb-1">
                   <span className="text-sm font-medium">Progress</span>
-                  <span className="text-sm font-medium">{cert.userProgress}%</span>
+                  <span className="text-sm font-medium">
+                    {cert.userProgress}%
+                  </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
@@ -234,7 +250,9 @@ export const Certificates = () => {
                 <div className="mt-4">
                   <h3 className="font-medium mb-2">Goals to Complete:</h3>
                   {allGoalsVerified ? (
-                    <p className="text-green-500 font-medium">All Goals Verified ✅</p>
+                    <p className="text-green-500 font-medium">
+                      All Goals Verified ✅
+                    </p>
                   ) : (
                     <ul className="list-none text-sm text-gray-600">
                       {cert.goals.map((goal, index) => {
@@ -248,14 +266,18 @@ export const Certificates = () => {
                           >
                             <span
                               className={
-                                userGoal?.completed ? "line-through text-gray-400" : ""
+                                userGoal?.completed
+                                  ? "line-through text-gray-400"
+                                  : ""
                               }
                             >
                               {goal.title}
                             </span>
                             <span
                               className={
-                                userGoal?.verified ? "text-green-500" : "text-red-500"
+                                userGoal?.verified
+                                  ? "text-green-500"
+                                  : "text-red-500"
                               }
                             >
                               {userGoal?.verified
@@ -268,7 +290,11 @@ export const Certificates = () => {
                             {/* Show Upload button only if the goal is not verified */}
                             {!userGoal?.verified && (
                               <label className="cursor-pointer bg-blue-500 text-white px-3 py-1 rounded text-xs flex items-center justify-center w-fit">
-                                <Upload size={14} className="inline-block mr-1" /> Upload
+                                <Upload
+                                  size={14}
+                                  className="inline-block mr-1"
+                                />{" "}
+                                Upload
                                 <input
                                   type="file"
                                   accept="image/*, application/pdf"
@@ -284,8 +310,8 @@ export const Certificates = () => {
                               </label>
                             )}
 
-                            {userGoal?.proof && (
-                              userGoal.proof.includes("application/pdf") ? (
+                            {userGoal?.proof &&
+                              (userGoal.proof.includes("application/pdf") ? (
                                 <a
                                   href={userGoal.proof}
                                   target="_blank"
@@ -300,8 +326,7 @@ export const Certificates = () => {
                                   alt="Proof"
                                   className="w-20 h-20 rounded-md"
                                 />
-                              )
-                            )}
+                              ))}
                           </li>
                         );
                       })}

@@ -2,23 +2,17 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  plugins: [
-    react({
-      babel: {
-        plugins: ["@babel/plugin-transform-runtime"],
-      },
-    }),
-  ],
+  plugins: [react()],
   define: {
-    "process.env": {}, // Prevent `process` from being undefined
+    "process.env": {},
   },
   server: {
-    host: true, // Allows access via localhost and network IP
+    host: true,
     proxy: {
       "/api": {
-        target: "http://localhost:5000", // Backend server URL
+        target: process.env.VITE_BACKEND_URL,
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
     },
   },

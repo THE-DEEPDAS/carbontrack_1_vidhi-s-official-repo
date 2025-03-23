@@ -30,8 +30,7 @@ ChartJS.register(
   Legend
 );
 
-const API_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"; // Use environment variable
+const API_URL = import.meta.env.VITE_API_URL;
 
 const Dashboard = () => {
   const [userData, setUserData] = useState(null);

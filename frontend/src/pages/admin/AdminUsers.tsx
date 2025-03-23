@@ -49,6 +49,8 @@ interface GroupedByUser {
   [userId: string]: GroupedUserData;
 }
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export const AdminUsers = () => {
   const { user, token, loading: authLoading, signOut } = useAuthStore();
   const navigate = useNavigate();
@@ -92,7 +94,7 @@ export const AdminUsers = () => {
           throw new Error("No token found. Please log in again.");
         }
 
-        const response = await fetch("http://localhost:5000/api/users/all", {
+        const response = await fetch(`${API_URL}/users/all`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -123,14 +125,11 @@ export const AdminUsers = () => {
 
     const fetchUserCertificates = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:5000/api/certificates/all",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await fetch(`${API_URL}/certificates/all`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         if (response.status === 401) {
           signOut();
@@ -176,7 +175,7 @@ export const AdminUsers = () => {
     setError(null);
     try {
       const response = await fetch(
-        `http://localhost:5000/api/certificates/verify/${certId}/${goalId}`,
+        `${API_URL}/certificates/verify/${certId}/${goalId}`,
         {
           method: "PUT",
           headers: {
@@ -257,9 +256,15 @@ export const AdminUsers = () => {
 
       {/* Filter Tabs */}
       <div className="flex space-x-4 mb-6">
-        <button className="px-4 py-2 bg-[#551281] text-white rounded-lg">All Users</button>
-        <button className="px-4 py-2 bg-[#A5E1AD] text-[#21094E] rounded-lg">Pending Verification</button>
-        <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">Verified</button>
+        <button className="px-4 py-2 bg-[#551281] text-white rounded-lg">
+          All Users
+        </button>
+        <button className="px-4 py-2 bg-[#A5E1AD] text-[#21094E] rounded-lg">
+          Pending Verification
+        </button>
+        <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">
+          Verified
+        </button>
       </div>
 
       {/* Table Container */}
@@ -283,21 +288,35 @@ export const AdminUsers = () => {
               className="border rounded-lg px-3 py-1 text-gray-700"
             />
             <button className="p-2 bg-gray-200 rounded-lg">
-              <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="w-5 h-5 text-gray-700"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path d="M10 4a6 6 0 100 12 6 6 0 000-12zm-8 6a8 8 0 1114.32 4.906l3.387 3.387a1 1 0 01-1.414 1.414l-3.387-3.387A8 8 0 012 10z" />
               </svg>
             </button>
             <button className="p-2 bg-gray-200 rounded-lg">
-              <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="w-5 h-5 text-gray-700"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
               </svg>
             </button>
             <button className="p-2 bg-gray-200 rounded-lg">
-              <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="w-5 h-5 text-gray-700"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path d="M6 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm0 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm0 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm0 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z" />
               </svg>
             </button>
-            <button className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg">Export</button>
+            <button className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg">
+              Export
+            </button>
           </div>
         </div>
 
@@ -343,7 +362,9 @@ export const AdminUsers = () => {
                           : "bg-green-100 text-green-800"
                       }`}
                     >
-                      {userData.userCertificates[0]?.verified ? "Verified" : "Pending"}
+                      {userData.userCertificates[0]?.verified
+                        ? "Verified"
+                        : "Pending"}
                     </span>
                   </td>
                   <td className="py-3 px-4">
@@ -351,7 +372,9 @@ export const AdminUsers = () => {
                       onClick={() => toggleUser(userData.user._id)}
                       className="px-3 py-1 bg-[#4CA1A3] text-white rounded-lg"
                     >
-                      {expandedUser === userData.user._id ? "Hide Details" : "View Details"}
+                      {expandedUser === userData.user._id
+                        ? "Hide Details"
+                        : "View Details"}
                     </button>
                   </td>
                 </tr>
@@ -428,95 +451,98 @@ export const AdminUsers = () => {
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {userCert.goals.map((userGoal, index) => {
-                                          const goal =
-                                            userCert.certificateId?.goals.find(
-                                              (g) => g._id === userGoal.goalId
-                                            );
-                                          return (
-                                            <tr
-                                              key={userGoal.goalId}
-                                              className="border-t border-gray-200 hover:bg-gray-50"
-                                            >
-                                              <td className="py-2 px-4 text-gray-600">
-                                                {goal?.title || "Goal Not Found"}
-                                              </td>
-                                              <td className="py-2 px-4">
-                                                <span
-                                                  className={
-                                                    userGoal.verified
-                                                      ? "text-green-500"
-                                                      : userGoal.completed
-                                                      ? "text-yellow-500"
-                                                      : "text-red-500"
-                                                  }
-                                                >
-                                                  {userGoal.completed
-                                                    ? userGoal.verified
-                                                      ? "✅ Verified"
-                                                      : "⏳ Pending Verification"
-                                                    : "❌ Not Completed"}
-                                                </span>
-                                              </td>
-                                              <td className="py-2 px-4">
-                                                {userGoal.proof ? (
-                                                  userGoal.proof.includes(
-                                                    "application/pdf"
-                                                  ) ? (
-                                                    <a
-                                                      href={userGoal.proof}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      className="text-blue-500 hover:underline"
-                                                    >
-                                                      View PDF
-                                                    </a>
-                                                  ) : (
-                                                    <button
-                                                      onClick={() =>
-                                                        handleShowProof(
-                                                          userGoal.proof!
-                                                        )
-                                                      }
-                                                      className="text-blue-500 hover:underline"
-                                                    >
-                                                      View Image
-                                                    </button>
-                                                  )
-                                                ) : (
-                                                  <span className="text-gray-500">
-                                                    No proof uploaded
+                                        {userCert.goals.map(
+                                          (userGoal, index) => {
+                                            const goal =
+                                              userCert.certificateId?.goals.find(
+                                                (g) => g._id === userGoal.goalId
+                                              );
+                                            return (
+                                              <tr
+                                                key={userGoal.goalId}
+                                                className="border-t border-gray-200 hover:bg-gray-50"
+                                              >
+                                                <td className="py-2 px-4 text-gray-600">
+                                                  {goal?.title ||
+                                                    "Goal Not Found"}
+                                                </td>
+                                                <td className="py-2 px-4">
+                                                  <span
+                                                    className={
+                                                      userGoal.verified
+                                                        ? "text-green-500"
+                                                        : userGoal.completed
+                                                        ? "text-yellow-500"
+                                                        : "text-red-500"
+                                                    }
+                                                  >
+                                                    {userGoal.completed
+                                                      ? userGoal.verified
+                                                        ? "✅ Verified"
+                                                        : "⏳ Pending Verification"
+                                                      : "❌ Not Completed"}
                                                   </span>
-                                                )}
-                                              </td>
-                                              <td className="py-2 px-4">
-                                                <button
-                                                  onClick={() =>
-                                                    handleVerify(
-                                                      userCert._id,
-                                                      userGoal.goalId
+                                                </td>
+                                                <td className="py-2 px-4">
+                                                  {userGoal.proof ? (
+                                                    userGoal.proof.includes(
+                                                      "application/pdf"
+                                                    ) ? (
+                                                      <a
+                                                        href={userGoal.proof}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-blue-500 hover:underline"
+                                                      >
+                                                        View PDF
+                                                      </a>
+                                                    ) : (
+                                                      <button
+                                                        onClick={() =>
+                                                          handleShowProof(
+                                                            userGoal.proof!
+                                                          )
+                                                        }
+                                                        className="text-blue-500 hover:underline"
+                                                      >
+                                                        View Image
+                                                      </button>
                                                     )
-                                                  }
-                                                  disabled={
-                                                    userGoal.verified ||
-                                                    !userGoal.completed ||
-                                                    loading
-                                                  }
-                                                  className={`px-4 py-1 rounded text-sm font-medium transition ${
-                                                    userGoal.verified ||
-                                                    !userGoal.completed
-                                                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                      : "bg-[#4CA1A3] text-white hover:bg-[#3A7D80]"
-                                                  }`}
-                                                >
-                                                  {userGoal.verified
-                                                    ? "Verified"
-                                                    : "Verify"}
-                                                </button>
-                                              </td>
-                                            </tr>
-                                          );
-                                        })}
+                                                  ) : (
+                                                    <span className="text-gray-500">
+                                                      No proof uploaded
+                                                    </span>
+                                                  )}
+                                                </td>
+                                                <td className="py-2 px-4">
+                                                  <button
+                                                    onClick={() =>
+                                                      handleVerify(
+                                                        userCert._id,
+                                                        userGoal.goalId
+                                                      )
+                                                    }
+                                                    disabled={
+                                                      userGoal.verified ||
+                                                      !userGoal.completed ||
+                                                      loading
+                                                    }
+                                                    className={`px-4 py-1 rounded text-sm font-medium transition ${
+                                                      userGoal.verified ||
+                                                      !userGoal.completed
+                                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                        : "bg-[#4CA1A3] text-white hover:bg-[#3A7D80]"
+                                                    }`}
+                                                  >
+                                                    {userGoal.verified
+                                                      ? "Verified"
+                                                      : "Verify"}
+                                                  </button>
+                                                </td>
+                                              </tr>
+                                            );
+                                          }
+                                        )}
                                       </tbody>
                                     </table>
                                   </div>
@@ -531,7 +557,8 @@ export const AdminUsers = () => {
                                     {userCert.goals
                                       .filter(
                                         (userGoal) =>
-                                          userGoal.completed && !userGoal.verified
+                                          userGoal.completed &&
+                                          !userGoal.verified
                                       )
                                       .map((userGoal) => {
                                         const goal =

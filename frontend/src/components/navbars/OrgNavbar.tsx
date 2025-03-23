@@ -18,7 +18,7 @@ export const OrgNavbar = () => {
     { path: "/org/dashboard", icon: Layout, label: "Overview" },
     { path: "/org/employees", icon: Users, label: "Departments" },
     { path: "/org/reports", icon: FileText, label: "Reports" },
-    { path: "/org/rag", icon: Award, label: "Incentives" },
+    { path: "/org/incentives", icon: Award, label: "Incentives" },
   ];
 
   return (
@@ -27,7 +27,9 @@ export const OrgNavbar = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/org/dashboard" className="flex items-center">
-              <span className="text-xl font-bold text-white">Organization Panel</span>
+              <span className="text-xl font-bold text-white">
+                Organization Panel
+              </span>
             </Link>
           </div>
 
@@ -38,7 +40,9 @@ export const OrgNavbar = () => {
                 key={item.path}
                 to={item.path}
                 className={`flex items-center text-gray-300 hover:text-white transition-colors duration-200 border-b-2 ${
-                  isActive(item.path) ? "border-white" : "border-transparent hover:border-white"
+                  isActive(item.path)
+                    ? "border-white"
+                    : "border-transparent hover:border-white"
                 } py-5`}
               >
                 <item.icon className="w-4 h-4 mr-1" />
