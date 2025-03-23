@@ -152,13 +152,19 @@ const Dashboard = () => {
   };
 
   const handleClaimVoucher = (voucherId) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You are not authorized. Please log in again.");
+      return;
+    }
+
     axios
       .post(
-        `${API_URL}/claim-voucher`,
+        `${API_URL}/vouchers/claim`, // Ensure this matches the backend route
         { voucherId },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       )
@@ -168,8 +174,14 @@ const Dashboard = () => {
         setVouchers((prev) => prev.filter((v) => v._id !== voucherId)); // Remove claimed voucher
       })
       .catch((err) => {
-        console.error("Error claiming voucher:", err.message);
-        alert("Failed to claim voucher. Please try again.");
+        console.error(
+          "Error claiming voucher:",
+          err.response?.data || err.message
+        );
+        alert(
+          err.response?.data?.error ||
+            "Failed to claim voucher. Please try again."
+        );
       });
   };
 
@@ -495,9 +507,9 @@ const Dashboard = () => {
                         className="bg-gray-50 rounded-lg shadow-sm p-4 border border-gray-200"
                       >
                         <h3 className="text-sm font-medium text-black">
-                        {voucher.description || "No description provided"}
+                          {voucher.description || "No description provided"}
                         </h3>
-                        
+
                         <p className="text-sm font-semibold text-green-600 mt-2">
                           ${voucher.amount || "N/A"}
                         </p>

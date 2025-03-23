@@ -3,11 +3,14 @@ import mongoose from "mongoose";
 import { authenticateUser, protect } from "../middleware/auth.js";
 import Voucher from "../models/Voucher.js";
 import User from "../models/User.js";
+import Organization from "../models/Organization.js"; // Import the Organization model
 
 const router = express.Router();
 
 // Fetch available vouchers for a user
-router.get("/vouchers", protect, async (req, res) => {
+// Ensure the base path for these routes matches the frontend requests
+router.get("/", protect, async (req, res) => {
+  console.log("GET /api/vouchers route hit"); // Debug log
   try {
     const user = await User.findById(req.user.id);
     if (!user) {
@@ -26,36 +29,9 @@ router.get("/vouchers", protect, async (req, res) => {
   }
 });
 
-// Claim a voucher
-router.post("/claim-voucher", protect, async (req, res) => {
-  try {
-    const { voucherId } = req.body;
-
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const voucher = await Voucher.findById(voucherId);
-    if (!voucher) {
-      return res.status(404).json({ error: "Voucher not found" });
-    }
-
-    user.wallet += voucher.amount;
-    user.vouchers = user.vouchers.filter((v) => v.toString() !== voucherId);
-    await user.save();
-    await Voucher.findByIdAndDelete(voucherId);
-
-    console.log("Voucher claimed successfully. Updated wallet:", user.wallet); // Debug log
-    res.json({ wallet: user.wallet });
-  } catch (err) {
-    console.error("Error claiming voucher:", err);
-    res.status(500).json({ error: "Failed to claim voucher" });
-  }
-});
-
 // Offer a voucher
-router.post("/offer-voucher", protect, async (req, res) => {
+router.post("/offer", protect, async (req, res) => {
+  console.log("POST /api/vouchers/offer route hit"); // Debug log
   try {
     console.log("Offer Voucher - Request Body:", req.body);
 
@@ -99,6 +75,37 @@ router.post("/offer-voucher", protect, async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to offer voucher. Please try again later." });
+  }
+});
+
+// Claim a voucher
+router.post("/claim", protect, async (req, res) => {
+  console.log("POST /api/vouchers/claim route hit"); // Debug log
+  try {
+    const { voucherId } = req.body;
+    console.log("Voucher ID received:", voucherId); // Debug log
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const voucher = await Voucher.findById(voucherId);
+    if (!voucher) {
+      return res.status(404).json({ error: "Voucher not found" });
+    }
+
+    // Update user's wallet and remove the voucher
+    user.wallet += voucher.amount;
+    user.vouchers = user.vouchers.filter((v) => v.toString() !== voucherId);
+    await user.save();
+    await Voucher.findByIdAndDelete(voucherId);
+
+    console.log("Voucher claimed successfully. Updated wallet:", user.wallet); // Debug log
+    res.json({ wallet: user.wallet });
+  } catch (err) {
+    console.error("Error claiming voucher:", err);
+    res.status(500).json({ error: "Failed to claim voucher" });
   }
 });
 
