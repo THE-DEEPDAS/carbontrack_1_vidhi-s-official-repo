@@ -19,6 +19,7 @@ import OrgLayout from "./layouts/OrgLayout";
 import UserLayout from "./layouts/UserLayout";
 import Form from "./pages/Form";
 import ErrorBoundary from "./components/ErrorBoundary";
+import Navbar from "./components/Navbar";
 
 const API_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"; // Use Vite's environment variable
@@ -47,10 +48,7 @@ function App() {
     <BrowserRouter>
       {/* Public nav for non-logged-in users */}
       {!user && (
-        <nav className="bg-white shadow p-4 flex justify-end space-x-4">
-          <Link to="/login">Login</Link>
-          <Link to="/signup">Sign Up</Link>
-        </nav>
+        <Navbar/>
       )}
 
       <ErrorBoundary>
