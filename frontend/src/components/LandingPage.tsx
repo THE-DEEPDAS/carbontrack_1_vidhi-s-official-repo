@@ -22,14 +22,14 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Navigation */}
-      <nav className="fixed w-full bg-white/80 backdrop-blur-sm z-50 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center space-x-2">
+     
+       
+          
+            {/* <div className="flex items-center space-x-2">
               <Leaf className="w-8 h-8 text-emerald-500" />
               <span className="text-xl font-bold text-gray-900">CarbonTrack</span>
-            </div>
-            <div className="flex items-center space-x-4">
+            </div> */}
+            {/* <div className="flex items-center space-x-4">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -46,10 +46,10 @@ const LandingPage = () => {
               >
                 Get Started
               </motion.button>
-            </div>
-          </div>
-        </div>
-      </nav>
+            </div> */}
+        
+        
+      
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
